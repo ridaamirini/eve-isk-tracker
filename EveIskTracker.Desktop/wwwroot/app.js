@@ -148,9 +148,13 @@ async function loadStatus() {
 
   $('redirectUri').textContent = st.redirectUri;
   $('scopeList').innerHTML = st.scopes.map(s => `<span class="tag tag-neutral">${esc(s)}</span>`).join('');
-  if (document.activeElement !== $('clientId')) $('clientId').value = st.clientId || '';
-  if (document.activeElement !== $('contact')) $('contact').value = st.contact || '';
-  if (document.activeElement !== $('overlayTextPath')) $('overlayTextPath').value = st.overlayTextPath || '';
+  // Eingabefelder nur füllen, solange der Nutzer sie nicht angefasst hat — sonst
+  // überschreibt der 30s-Hintergrund-Refresh halb getippte Eingaben
+  for (const id of ['clientId', 'contact', 'overlayTextPath']) {
+    const el = $(id);
+    if (!el.dataset.dirty && document.activeElement !== el)
+      el.value = st[id] || '';
+  }
   $('dbPath').textContent = st.dbPath || '–';
   $('syncState').textContent = st.syncBusy ? 'gleicht ab …' : (st.syncMessage || '–');
 
@@ -618,12 +622,18 @@ async function runSync(btn) {
 $('btnSync').addEventListener('click', e => runSync(e.currentTarget));
 $('btnRefresh').addEventListener('click', e => runSync(e.currentTarget));
 
+// Angefasste Felder markieren, damit der Hintergrund-Refresh sie in Ruhe lässt
+for (const id of ['clientId', 'contact', 'overlayTextPath'])
+  $(id).addEventListener('input', e => { e.target.dataset.dirty = '1'; });
+
 $('btnSaveConfig').addEventListener('click', async () => {
   try {
     await api('/api/config', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ clientId: $('clientId').value, contact: $('contact').value }),
     });
+    delete $('clientId').dataset.dirty;
+    delete $('contact').dataset.dirty;
     await loadStatus();
   } catch (e) { alert('Speichern fehlgeschlagen: ' + e.message); }
 });
@@ -634,6 +644,7 @@ $('btnSaveTxt').addEventListener('click', async () => {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ overlayTextPath: $('overlayTextPath').value }),
     });
+    delete $('overlayTextPath').dataset.dirty;
   } catch (e) { alert('Speichern fehlgeschlagen: ' + e.message); }
 });
 

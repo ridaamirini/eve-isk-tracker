@@ -26,9 +26,48 @@ public static class Db
 
         using var c = Open();
         Exec(c, "PRAGMA journal_mode=WAL;");
-        Exec(c, "PRAGMA synchronous=NORMAL;");
+        // FULL statt NORMAL: im WAL-Modus fsynct NORMAL Commits nicht — bei einem
+        // harten Neustart können dann alle Daten seit dem letzten Checkpoint
+        // verloren gehen. Genau das ist einmal passiert; die paar ms pro Commit
+        // sind es wert.
+        Exec(c, "PRAGMA synchronous=FULL;");
         Exec(c, "PRAGMA busy_timeout=8000;");
         CreateSchema(c);
+        Checkpoint();
+        BackupIfDue();
+    }
+
+    /// <summary>WAL in die Hauptdatei übernehmen — klein halten, was verloren gehen könnte.</summary>
+    public static void Checkpoint()
+    {
+        try
+        {
+            using var c = Open();
+            Exec(c, "PRAGMA wal_checkpoint(TRUNCATE);");
+        }
+        catch { /* Checkpoint ist Vorsorge; ein Fehlschlag (z.B. paralleler Leser) ist ok */ }
+    }
+
+    /// <summary>
+    /// Höchstens einmal täglich einen konsistenten Schnappschuss neben die DB legen.
+    /// VACUUM INTO liest über den WAL hinweg und schreibt eine in sich stimmige Kopie.
+    /// </summary>
+    public static void BackupIfDue()
+    {
+        try
+        {
+            var backup = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(Path), "eveisk.backup.db");
+            if (File.Exists(backup) && (Util.UtcNow - File.GetLastWriteTimeUtc(backup)).TotalHours < 24)
+                return;
+            var tmp = backup + ".tmp";
+            if (File.Exists(tmp)) File.Delete(tmp);
+            using (var c = Open())
+            using (var cmd = Cmd(c, "VACUUM INTO $p", ("$p", tmp)))
+                cmd.ExecuteNonQuery();
+            if (File.Exists(backup)) File.Delete(backup);
+            File.Move(tmp, backup);
+        }
+        catch { /* Backup ist Beiwerk — die App muss auch ohne laufen */ }
     }
 
     public static SqliteConnection Open()

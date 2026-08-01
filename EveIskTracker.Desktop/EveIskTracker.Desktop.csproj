@@ -11,6 +11,9 @@
     <InvariantGlobalization>true</InvariantGlobalization>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <!-- In die EXE eingebettetes Icon: nur das sieht Windows beim Anheften an
+         die Taskleiste — das zur Laufzeit gezeichnete Fenster-Icon reicht nicht -->
+    <ApplicationIcon>app.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>

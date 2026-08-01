@@ -50,5 +50,9 @@ public static class Program
 
         Application.Run(form);
         server.StopAsync().Wait(TimeSpan.FromSeconds(3));
+
+        // Sauber abschließen: alles aus dem WAL in die Hauptdatei, Verbindungen zu
+        Db.Checkpoint();
+        Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
     }
 }

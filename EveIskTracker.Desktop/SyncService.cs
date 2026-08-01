@@ -100,6 +100,10 @@ public class SyncService : BackgroundService
 
             await ResolveMissingNames();
             LastMessage = "zuletzt " + DateTime.Now.ToString("HH:mm:ss");
+
+            // Frisch Geholtes sofort in die Hauptdatei übernehmen — die App wird oft
+            // hart beendet (Tray, Taskkill), da darf nichts lange nur im WAL liegen
+            Db.Checkpoint();
         }
         finally { Busy = false; }
     }
