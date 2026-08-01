@@ -22,6 +22,11 @@ public static class Program
 
         Db.Init(Config.DataDir);
 
+        // Wer die (jetzt eingebaute) Standard-ID früher manuell eingetragen hat, soll sie
+        // nicht im Settings-Feld sehen — die eingebaute ID bleibt in der Oberfläche unsichtbar
+        if (!string.IsNullOrEmpty(Config.DefaultClientId) && Config.ClientIdRaw == Config.DefaultClientId)
+            Config.ClientId = "";
+
         WebApplication server;
         try { server = WebHost.Start(); }
         catch (Exception ex)

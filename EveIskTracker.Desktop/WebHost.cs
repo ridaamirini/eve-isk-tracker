@@ -98,7 +98,8 @@ WHERE last_error IS NOT NULL
         {
             var form = await req.ReadFromJsonAsync<Dictionary<string, string>>();
             if (form == null) return Results.BadRequest(new { error = "Kein Inhalt." });
-            if (form.TryGetValue("clientId", out var cid) && !string.IsNullOrWhiteSpace(cid)) Config.ClientId = cid;
+            // Leer ist gültig: bedeutet "eingebaute Standard-App verwenden"
+            if (form.TryGetValue("clientId", out var cid)) Config.ClientId = cid ?? "";
             if (form.TryGetValue("contact", out var ct)) Config.Contact = ct;
             if (form.TryGetValue("overlayTextPath", out var op)) Config.OverlayTextPath = op;
             if (form.TryGetValue("overlayMetrics", out var om)) Config.OverlayMetrics = om;
