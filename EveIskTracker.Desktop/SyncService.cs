@@ -28,6 +28,7 @@ public class SyncService : BackgroundService
         ("orderhistory",3600),
         ("mining",       600),
         ("jobs",         300),
+        ("kills",        300),
     };
 
     public SyncService(ILogger<SyncService> log)
@@ -82,6 +83,7 @@ public class SyncService : BackgroundService
                             case "orderhistory": await SyncOrderHistory(charId, token); break;
                             case "mining": await SyncMining(charId, token); break;
                             case "jobs": await SyncJobs(charId, token); break;
+                            case "kills": await SyncKills(charId, token); break;
                         }
                         Db.MarkSync(charId, res);
                     }
@@ -400,6 +402,89 @@ ON CONFLICT(character_id,job_id) DO UPDATE SET status=$st, completed_utc=$cd";
         tx.Commit();
     }
 
+    /// <summary>Prüft, ob das gespeicherte Token einen Scope enthält.</summary>
+    public static bool HasScope(long charId, string scopeFragment)
+    {
+        var sc = Db.Scalar("SELECT scopes FROM tokens WHERE character_id=$c", ("$c", charId));
+        return sc != null && sc != DBNull.Value && ((string)sc).Contains(scopeFragment);
+    }
+
+    // zKillboard möchte einen erkennbaren User-Agent; Werte werden je Kill genau einmal geholt
+    private static readonly HttpClient Zkb = new() { Timeout = TimeSpan.FromSeconds(20) };
+    private static bool _zkbInit;
+
+    /// <summary>
+    /// Killmails: Liste (ID+Hash) kommt von ESI, Details vom öffentlichen Killmail-Endpunkt,
+    /// der ISK-Wert von zKillboard. Läuft nur, wenn das Token den Killmail-Scope hat —
+    /// Bestandslogins von vor der Scope-Erweiterung werden still übersprungen, bis der
+    /// Charakter neu angemeldet wird.
+    /// </summary>
+    private async Task SyncKills(long charId, string token)
+    {
+        if (!HasScope(charId, "esi-killmails")) return;
+
+        var r = await _esi.GetAsync($"/v1/characters/{charId}/killmails/recent/", token);
+        if (!r.Ok) throw new EsiException(r.Error);
+
+        var known = new HashSet<long>();
+        using (var c = Db.Open())
+        using (var cmd = Db.Cmd(c, "SELECT killmail_id FROM kills WHERE character_id=$c", ("$c", charId)))
+        using (var rd = cmd.ExecuteReader())
+            while (rd.Read()) known.Add(rd.GetInt64(0));
+
+        using var doc = JsonDocument.Parse(r.Body);
+        foreach (var e in doc.RootElement.EnumerateArray())
+        {
+            var id = e.GetProperty("killmail_id").GetInt64();
+            if (known.Contains(id)) continue;
+            var hash = e.GetProperty("killmail_hash").GetString();
+
+            // Detail ist öffentlich (ID+Hash sind das Geheimnis)
+            var det = await _esi.GetAsync($"/v1/killmails/{id}/{hash}/");
+            if (!det.Ok) continue;
+
+            using var dd = JsonDocument.Parse(det.Body);
+            var root = dd.RootElement;
+            var victim = root.GetProperty("victim");
+            var victimChar = victim.TryGetProperty("character_id", out var vc) ? vc.GetInt64() : 0;
+            var shipType = victim.TryGetProperty("ship_type_id", out var stp) ? stp.GetInt64() : 0;
+            var system = root.TryGetProperty("solar_system_id", out var ss) ? ss.GetInt64() : 0;
+            var time = Str(root, "killmail_time");
+
+            var value = await FetchZkbValue(id);
+
+            Db.Run(@"INSERT INTO kills(character_id,killmail_id,hash,time_utc,is_loss,victim_ship_type_id,victim_char_id,solar_system_id,value)
+                     VALUES($c,$k,$h,$t,$l,$s,$v,$sy,$val) ON CONFLICT DO NOTHING",
+                ("$c", charId), ("$k", id), ("$h", hash),
+                ("$t", Norm(time)), ("$l", victimChar == charId ? 1 : 0),
+                ("$s", shipType), ("$v", victimChar), ("$sy", system), ("$val", value));
+        }
+    }
+
+    private async Task<double> FetchZkbValue(long killmailId)
+    {
+        try
+        {
+            if (!_zkbInit)
+            {
+                Zkb.DefaultRequestHeaders.UserAgent.ParseAdd("EveIskTracker/1.0");
+                var contact = Config.Contact;
+                if (!string.IsNullOrWhiteSpace(contact))
+                    Zkb.DefaultRequestHeaders.Add("X-User-Agent", $"EveIskTracker/1.0 ({contact.Trim()})");
+                _zkbInit = true;
+            }
+            var body = await Zkb.GetStringAsync($"https://zkillboard.com/api/killID/{killmailId}/");
+            using var doc = JsonDocument.Parse(body);
+            if (doc.RootElement.ValueKind == JsonValueKind.Array && doc.RootElement.GetArrayLength() > 0)
+            {
+                var zkb = doc.RootElement[0].GetProperty("zkb");
+                if (zkb.TryGetProperty("totalValue", out var tv)) return tv.GetDouble();
+            }
+        }
+        catch { /* zKillboard nicht erreichbar: Wert bleibt 0, Kill wird trotzdem gelistet */ }
+        return 0;
+    }
+
     private async Task SyncPrices(bool force)
     {
         var last = Db.LastSync(0, "prices");
@@ -442,6 +527,9 @@ SELECT DISTINCT id FROM (
     UNION SELECT solar_system_id FROM mining
     UNION SELECT product_type_id FROM industry_jobs WHERE product_type_id IS NOT NULL
     UNION SELECT blueprint_type_id FROM industry_jobs WHERE blueprint_type_id IS NOT NULL
+    UNION SELECT victim_ship_type_id FROM kills WHERE victim_ship_type_id IS NOT NULL
+    UNION SELECT victim_char_id FROM kills WHERE victim_char_id IS NOT NULL
+    UNION SELECT solar_system_id FROM kills WHERE solar_system_id IS NOT NULL
 ) WHERE id IS NOT NULL AND id > 0 AND id NOT IN (SELECT id FROM names) LIMIT 3000"))
         using (var rd = cmd.ExecuteReader())
             while (rd.Read()) missing.Add(rd.GetInt64(0));

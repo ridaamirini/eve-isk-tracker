@@ -32,7 +32,7 @@ public static class Config
     }
 
     /// <summary>Reihenfolge hier = Anzeige-Reihenfolge im Widget (nach dem Vorbild klassischer Session-HUDs).</summary>
-    public static readonly string[] KnownMetrics = { "time", "session", "rate", "bounties", "missions", "mining", "wallet" };
+    public static readonly string[] KnownMetrics = { "time", "session", "rate", "bounties", "missions", "kills", "destroyed", "mining", "wallet" };
 
     /// <summary>Welche Werte das Stream-Widget zeigt — Komma-Liste, Reihenfolge fest.</summary>
     public static string OverlayMetrics

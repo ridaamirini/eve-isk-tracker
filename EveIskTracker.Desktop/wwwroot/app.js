@@ -190,9 +190,11 @@ async function loadStatus() {
       <div class="char-avatar" style="width:34px;height:34px">${esc(initials(c.name))}</div>
       <div style="flex:1;min-width:0">
         <div style="font-size:13px">${esc(c.name)}</div>
-        <div class="head-note">wallet · orders · mining · jobs · assets</div>
+        <div class="head-note">wallet · orders · mining · jobs · assets${c.hasKillScope ? ' · killmails' : ''}</div>
       </div>
-      <span class="tag tag-accent">Connected</span>
+      ${c.hasKillScope
+        ? '<span class="tag tag-accent">Connected</span>'
+        : '<span class="tag tag-off" title="Für Kills: Scope bei CCP ergänzen, dann neu anmelden">Kills-Scope fehlt</span>'}
       <button class="btn btn-danger" style="font-size:12px" data-forget="${c.characterId}">Revoke</button>
     </div>`).join('') || '<div class="empty">Noch kein Charakter verbunden.</div>';
 
@@ -366,7 +368,37 @@ function renderTab() {
   if (S.tab === 'ratting') $('tab-ratting').innerHTML = renderRatting(r.ratting);
   if (S.tab === 'mining') $('tab-mining').innerHTML = renderMining(r.mining);
   if (S.tab === 'industry') $('tab-industry').innerHTML = renderIndustry(r.industry);
+  if (S.tab === 'kills') loadKills();
   if (S.tab === 'sessions') loadSessionHistory();
+}
+
+async function loadKills() {
+  const k = await api(`/api/kills?charId=${S.charId}&range=${S.repRange}`);
+  const me = S.status.characters.find(c => c.characterId === S.charId);
+  const scopeHint = me && !me.hasKillScope ? `
+    <div class="banner info">Für Kill-Daten fehlt deinem Login noch die Berechtigung
+    <code>esi-killmails.read_killmails.v1</code>. Auf developers.eveonline.com die Permission
+    zur Anwendung hinzufügen, dann unter Settings den Charakter neu anmelden.</div>` : '';
+
+  const rows = k.rows.map(x => `
+    <tr>
+      <td class="head-note" style="white-space:nowrap">${fmtTime(x.time)}</td>
+      <td><span class="tag ${x.isLoss ? 'tag-off' : 'tag-accent'}">${x.isLoss ? 'Verlust' : 'Kill'}</span></td>
+      <td>${esc(x.ship)}${x.victim && !x.isLoss ? ' <span class="head-note">— ' + esc(x.victim) + '</span>' : ''}</td>
+      <td class="head-note">${esc(x.system)}</td>
+      <td class="num mono ${x.isLoss ? 'neg' : 'acc'}">${x.value > 0 ? fmtIsk(x.value) : '—'}</td>
+      <td><a href="https://zkillboard.com/kill/${x.killmailId}/" target="_blank" rel="noopener">zKill →</a></td>
+    </tr>`).join('');
+
+  $('tab-kills').innerHTML = scopeHint + tileGrid(
+    tile('KILLS', String(k.killCount), 'acc', 'im Zeitraum') +
+    tile('ZERSTÖRT', fmtIsk(k.destroyed), 'acc', 'Wert laut zKillboard') +
+    tile('VERLUSTE', String(k.lossCount), k.lossCount > 0 ? 'neg' : '', 'eigene Schiffe') +
+    tile('VERLOREN', '−' + fmtIsk(k.lost), k.lost > 0 ? 'neg' : '', 'Wert laut zKillboard')) + `
+    <div class="card" style="padding:4px 0"><div class="tablewrap"><table class="table">
+      <thead><tr><th>Zeit</th><th>Typ</th><th>Schiff</th><th>System</th><th class="num">Wert</th><th></th></tr></thead>
+      <tbody>${rows || '<tr><td colspan="6" class="empty">Keine Kills oder Verluste im Zeitraum.</td></tr>'}</tbody>
+    </table></div></div>`;
 }
 
 function renderTrading(t) {
@@ -459,6 +491,8 @@ const METRIC_DEFS = [
   { key: 'rate', name: 'ISK/h', label: 'ISK/STUNDE' },
   { key: 'bounties', name: 'Bounties', label: 'BOUNTIES CA.' },
   { key: 'missions', name: 'Missionen', label: 'MISSIONEN CA.' },
+  { key: 'kills', name: 'Kills', label: 'KILLS' },
+  { key: 'destroyed', name: 'Zerstört', label: 'ZERSTÖRT' },
   { key: 'mining', name: 'Mining', label: 'MINING-WERT' },
   { key: 'wallet', name: 'Wallet', label: 'WALLET' },
 ];
@@ -479,6 +513,8 @@ async function loadOverlayScreen() {
     if (k === 'session' && d.active) { text = signed(d.delta); cls = d.delta > 0 ? 'pos' : d.delta < 0 ? 'neg' : ''; }
     if (k === 'bounties' && d.active && d.bounties > 0) { text = fmtIsk(d.bounties); cls = 'pos'; }
     if (k === 'missions' && d.active && d.missions > 0) { text = fmtIsk(d.missions); cls = 'pos'; }
+    if (k === 'kills' && d.active) text = String(d.kills || 0);
+    if (k === 'destroyed' && d.active && d.destroyed > 0) { text = fmtIsk(d.destroyed); cls = 'accent'; }
     if (k === 'mining' && d.active && d.mining > 0) text = fmtIsk(d.mining);
     const def = METRIC_DEFS.find(m => m.key === k);
     return `<div class="pw-cell"><div class="pw-label">${def.label}</div><div class="pw-value ${cls}">${text}</div></div>`;

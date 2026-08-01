@@ -82,6 +82,8 @@ const METRICS = {
   rate:     { label: 'ISK/STUNDE',    render: d => d.active ? { text: signed(d.iskPerHour), cls: 'accent' } : { text: '–', cls: '' } },
   bounties: { label: 'BOUNTIES CA.',  render: d => d.active && d.bounties > 0 ? { text: fmt(d.bounties), cls: 'pos' } : { text: '–', cls: '' } },
   missions: { label: 'MISSIONEN CA.', render: d => d.active && d.missions > 0 ? { text: fmt(d.missions), cls: 'pos' } : { text: '–', cls: '' } },
+  kills:    { label: 'KILLS',         render: d => d.active ? { text: String(d.kills || 0), cls: '' } : { text: '–', cls: '' } },
+  destroyed:{ label: 'ZERSTÖRT',      render: d => d.active && d.destroyed > 0 ? { text: fmt(d.destroyed), cls: 'accent' } : { text: '–', cls: '' } },
   mining:   { label: 'MINING-WERT',   render: d => d.active && d.mining > 0 ? { text: fmt(d.mining), cls: '' } : { text: '–', cls: '' } },
   wallet:   { label: 'WALLET',        render: d => ({ text: fmt(d.balance), cls: '' }) },
 };
@@ -94,6 +96,7 @@ const METRICS = {
 let rateHoldMs = 5 * 60 * 1000;
 let sessionStartMs = null;   // für den lokal tickenden Timer
 const last = { active: null, balance: null, delta: null, mining: null, bounties: null, missions: null,
+               kills: null, destroyed: null,
                metrics: '', rate: { text: '–', cls: '' }, rateAt: 0 };
 
 // Bis zu 4 Kacheln pro Reihe, ab 5 ausgewogen auf zwei Reihen verteilt
@@ -121,7 +124,8 @@ async function tick(){
 
     const activeChanged = d.active !== last.active;
     const dataChanged = d.balance !== last.balance || d.delta !== last.delta || d.mining !== last.mining
-                     || d.bounties !== last.bounties || d.missions !== last.missions;
+                     || d.bounties !== last.bounties || d.missions !== last.missions
+                     || d.kills !== last.kills || d.destroyed !== last.destroyed;
     const layoutChanged = metricsKey !== last.metrics;
     const rateDue = activeChanged || (now - last.rateAt >= rateHoldMs);
 
@@ -137,6 +141,7 @@ async function tick(){
         }).join('<div class="sep"></div>') + '</div>').join('');
       last.active = d.active; last.balance = d.balance; last.delta = d.delta;
       last.mining = d.mining; last.bounties = d.bounties; last.missions = d.missions;
+      last.kills = d.kills; last.destroyed = d.destroyed;
       last.metrics = metricsKey;
     }
 

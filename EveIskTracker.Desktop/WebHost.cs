@@ -40,7 +40,8 @@ public static class WebHost
             using (var c = Db.Open())
             using (var cmd = Db.Cmd(c, @"
 SELECT ch.character_id, ch.name, ch.last_balance, ch.last_sync_utc, ch.enabled,
-       (SELECT COUNT(*) FROM sessions s WHERE s.character_id=ch.character_id AND s.ended_utc IS NULL)
+       (SELECT COUNT(*) FROM sessions s WHERE s.character_id=ch.character_id AND s.ended_utc IS NULL),
+       COALESCE((SELECT t.scopes FROM tokens t WHERE t.character_id=ch.character_id), '')
 FROM characters ch ORDER BY ch.name"))
             using (var r = cmd.ExecuteReader())
                 while (r.Read())
@@ -52,6 +53,8 @@ FROM characters ch ORDER BY ch.name"))
                         lastSync = r.IsDBNull(3) ? null : r.GetString(3),
                         enabled = r.GetInt64(4) == 1,
                         sessionActive = r.GetInt64(5) > 0,
+                        // Bestandslogin von vor der Scope-Erweiterung? Dann fehlt Kills.
+                        hasKillScope = r.GetString(6).Contains("esi-killmails"),
                     });
 
             var errors = new List<object>();
@@ -275,7 +278,8 @@ ORDER BY started_utc DESC LIMIT 50", ("$c", charId));
 
             // Aufschlüsselung fürs HUD: Bounties und Missionen im Session-Fenster.
             // Quelle ist das Journal — hinkt bis zu 1h nach, daher zeigt das Widget "ca."
-            double bounties = 0, missions = 0;
+            double bounties = 0, missions = 0, destroyed = 0;
+            long killCount = 0;
             if (st.Active)
             {
                 var started = Util.ParseIso(st.StartedUtc);
@@ -283,6 +287,14 @@ ORDER BY started_utc DESC LIMIT 50", ("$c", charId));
                     "bounty_prizes", "bounty_prize", "bounty", "ess_escrow_transfer");
                 missions = Analytics.SumRefTypes(charId, started, Util.UtcNow,
                     "agent_mission_reward", "agent_mission_time_bonus_reward", "mission_reward", "mission_completion");
+
+                using var c = Db.Open();
+                using var cmd = Db.Cmd(c, @"
+SELECT COUNT(*), COALESCE(SUM(value),0) FROM kills
+WHERE character_id=$c AND is_loss=0 AND time_utc >= $f",
+                    ("$c", charId), ("$f", Util.ToIso(started)));
+                using var r = cmd.ExecuteReader();
+                if (r.Read()) { killCount = r.GetInt64(0); destroyed = r.GetDouble(1); }
             }
 
             return Results.Ok(new
@@ -295,6 +307,8 @@ ORDER BY started_utc DESC LIMIT 50", ("$c", charId));
                 mining = st.MiningValue,
                 bounties,
                 missions,
+                kills = killCount,
+                destroyed,
                 hours = st.Hours,
                 // Auswahl der Kacheln und Haltezeit wandern mit — so greifen Änderungen
                 // im Widget binnen Sekunden, ohne die Browser-Quelle anzufassen
@@ -416,6 +430,41 @@ GROUP BY ref_type", ("$c", charId), ("$f", Util.ToIso(from))))
                 new { label = "Mining", value = mining },
                 new { label = "Sonstiges", value = other },
             });
+        });
+
+        // Kills & Verluste im Zeitraum, Werte von zKillboard, Links dorthin
+        app.MapGet("/api/kills", (long charId, string range) =>
+        {
+            var (from, to) = ParseRange(range);
+            var names = Analytics.Names();
+            var rows = new List<object>();
+            double destroyed = 0, lost = 0;
+            int killCount = 0, lossCount = 0;
+
+            using var c = Db.Open();
+            using var cmd = Db.Cmd(c, @"
+SELECT killmail_id, time_utc, is_loss, victim_ship_type_id, victim_char_id, solar_system_id, value
+FROM kills WHERE character_id=$c AND time_utc >= $f AND time_utc <= $t
+ORDER BY time_utc DESC LIMIT 200",
+                ("$c", charId), ("$f", Util.ToIso(from)), ("$t", Util.ToIso(to)));
+            using var r = cmd.ExecuteReader();
+            while (r.Read())
+            {
+                var isLoss = r.GetInt64(2) == 1;
+                var value = r.IsDBNull(6) ? 0 : r.GetDouble(6);
+                if (isLoss) { lossCount++; lost += value; } else { killCount++; destroyed += value; }
+                rows.Add(new
+                {
+                    killmailId = r.GetInt64(0),
+                    time = r.GetString(1),
+                    isLoss,
+                    ship = names.GetValueOrDefault(r.IsDBNull(3) ? 0 : r.GetInt64(3), "?"),
+                    victim = names.GetValueOrDefault(r.IsDBNull(4) ? 0 : r.GetInt64(4), ""),
+                    system = names.GetValueOrDefault(r.IsDBNull(5) ? 0 : r.GetInt64(5), "?"),
+                    value,
+                });
+            }
+            return Results.Ok(new { killCount, lossCount, destroyed, lost, rows });
         });
 
         app.MapGet("/api/mining/today", (long charId) =>

@@ -63,12 +63,13 @@ Doppelklick auf `EveIskTracker.exe`.
 2. **Create New Application**
 3. Name und Beschreibung frei wählen (z.B. „ISK Tracker")
 4. **Connection Type**: `Authentication & API Access`
-5. **Permissions** — genau diese fünf:
+5. **Permissions** — genau diese sechs:
    - `esi-wallet.read_character_wallet.v1`
    - `esi-markets.read_character_orders.v1`
    - `esi-industry.read_character_mining.v1`
    - `esi-industry.read_character_jobs.v1`
    - `esi-assets.read_assets.v1`
+   - `esi-killmails.read_killmails.v1`
 6. **Callback URL** — exakt:
    ```
    http://localhost:8765/callback

@@ -23,6 +23,7 @@ public static class Sso
         "esi-industry.read_character_mining.v1",   // Mining-Ledger
         "esi-industry.read_character_jobs.v1",     // Produktionsjobs
         "esi-assets.read_assets.v1",               // Bestände zur Bewertung
+        "esi-killmails.read_killmails.v1",         // Kills & Verluste (ISK-Werte via zKillboard)
     };
 
     private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(30) };

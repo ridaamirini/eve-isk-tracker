@@ -175,6 +175,21 @@ CREATE TABLE IF NOT EXISTS names (
     category TEXT
 );
 
+-- Killmails: ID+Hash von ESI, ISK-Wert von zKillboard nachgeschlagen
+CREATE TABLE IF NOT EXISTS kills (
+    character_id        INTEGER NOT NULL,
+    killmail_id         INTEGER NOT NULL,
+    hash                TEXT,
+    time_utc            TEXT,
+    is_loss             INTEGER NOT NULL DEFAULT 0,
+    victim_ship_type_id INTEGER,
+    victim_char_id      INTEGER,
+    solar_system_id     INTEGER,
+    value               REAL,
+    PRIMARY KEY (character_id, killmail_id)
+);
+CREATE INDEX IF NOT EXISTS ix_kills_time ON kills(character_id, time_utc);
+
 CREATE TABLE IF NOT EXISTS sessions (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
     character_id  INTEGER NOT NULL,

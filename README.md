@@ -21,7 +21,7 @@ Historie zurück, auch über das hinaus, was das Spiel selbst noch anzeigt.
   CSV-Export
 - **Reports** — Handel mit **echter FIFO-Gewinnrechnung** (Einstandspreis statt bloßer
   Umsatzsumme, Broker-Gebühr und Verkaufssteuer separat), Ratting/Missionen, Mining,
-  Industrie, Session-Historie
+  Industrie, **Kills & Verluste mit zKillboard-Werten und -Links**, Session-Historie
 - **Sessions** — Start/Stopp per Klick, ISK-Differenz und ISK/h live, Zuordnung von
   Mining-Erträgen zum Session-Zeitfenster
 - **Stream-Widget** — 420 × 240 px Browser-Quelle („ISK TRACKER · LIVE") im Stil klassischer
@@ -43,8 +43,8 @@ Historie zurück, auch über das hinaus, was das Spiel selbst noch anzeigt.
 - Kein Client-Secret in der App (bei einer verteilten EXE wäre es ohnehin nicht geheim)
 - Das Refresh-Token liegt **DPAPI-verschlüsselt** lokal — nur das eigene Windows-Konto
   kann es lesen
-- Die App spricht ausschließlich mit `esi.evetech.net` und `login.eveonline.com`;
-  Schriften/Icons kommen von Google Fonts bzw. unpkg (CDN)
+- Die App spricht mit `esi.evetech.net`, `login.eveonline.com` und — nur für
+  Kill-Bewertungen — `zkillboard.com`; Schriften/Icons kommen von Google Fonts bzw. unpkg (CDN)
 - Alle Daten liegen in `%LOCALAPPDATA%\EveIskTracker\eveisk.db` (SQLite)
 
 ## Loslegen
@@ -56,7 +56,7 @@ Historie zurück, auch über das hinaus, was das Spiel selbst noch anzeigt.
    Callback URL exakt `http://localhost:8765/callback`, dazu diese Scopes:
    `esi-wallet.read_character_wallet.v1`, `esi-markets.read_character_orders.v1`,
    `esi-industry.read_character_mining.v1`, `esi-industry.read_character_jobs.v1`,
-   `esi-assets.read_assets.v1`
+   `esi-assets.read_assets.v1`, `esi-killmails.read_killmails.v1`
 3. Client ID in der App unter **Settings** eintragen → Speichern → **Charakter anmelden**
 
 Die Callback-URL muss **nicht** aus dem Internet erreichbar sein — CCP leitet nur den
@@ -117,7 +117,9 @@ OAuth-Login braucht den `localhost`-Callback.
   wurden, haben keinen Einstandspreis — die App weist das offen aus.
 - **Industrie ohne Materialkosten**: ESI liefert zu Jobs nur Installationskosten; der
   Saldo ist entsprechend optimistisch.
-- **Keine Killmails** — dafür wäre ein zusätzlicher Scope plus zKillboard-Anbindung nötig.
+- **Kill-Werte von zKillboard** — ESI liefert Killmails ohne ISK-Wert; die Bewertung kommt
+  von zkillboard.com (eine Anfrage je neuem Kill). Ist zKillboard nicht erreichbar, wird der
+  Kill trotzdem gelistet, nur ohne Wert.
 
 ## Danksagung
 

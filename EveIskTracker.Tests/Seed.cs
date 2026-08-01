@@ -145,6 +145,23 @@ public static class Seed
                 ("$co", 4_200_000 + i * 800_000),
                 ("$s", Util.ToIso(now.AddDays(-(i * 3 + 4)))), ("$e", Util.ToIso(now.AddDays(-(i * 3 + 2)))));
 
+        // --- Kills (Werte wie von zKillboard geliefert) ---
+        Db.Run("INSERT INTO names(id,name,category) VALUES(90000202,'V. Ashkente','character') ON CONFLICT(id) DO NOTHING");
+        Db.Run("INSERT INTO names(id,name,category) VALUES(90000203,'K. Dresc','character') ON CONFLICT(id) DO NOTHING");
+        var killSeed = new (long Id, double DaysAgo, bool Loss, long Ship, long Victim, double Value)[]
+        {
+            (91000001, 0.06, false, 24698, 90000202, 62_400_000),   // Drake-Kill in der Session
+            (91000002, 0.11, false, 587, 90000203, 8_100_000),      // Rifter-Kill in der Session
+            (91000003, 1.3, false, 24698, 90000202, 71_800_000),
+            (91000004, 3.7, true, 587, DemoId, 12_600_000),         // eigener Verlust
+            (91000005, 6.2, false, 587, 90000203, 5_900_000),
+        };
+        foreach (var k in killSeed)
+            Db.Run(@"INSERT INTO kills(character_id,killmail_id,hash,time_utc,is_loss,victim_ship_type_id,victim_char_id,solar_system_id,value)
+                     VALUES($c,$k,'demo',$t,$l,$s,$v,30000142,$val) ON CONFLICT DO NOTHING",
+                ("$c", DemoId), ("$k", k.Id), ("$t", Util.ToIso(now.AddDays(-k.DaysAgo))),
+                ("$l", k.Loss ? 1 : 0), ("$s", k.Ship), ("$v", k.Victim), ("$val", k.Value));
+
         // --- laufende Session seit 3,5 Stunden ---
         Db.Run(@"INSERT INTO sessions(character_id,label,started_utc,start_balance)
                  VALUES($c,'Ratting Delve',$t,$b)",
@@ -176,8 +193,9 @@ public static class Seed
 
     private static void Wipe()
     {
-        foreach (var t in new[] { "transactions", "journal", "mining", "mining_delta", "industry_jobs", "market_orders", "characters", "tokens", "sync_state" })
+        foreach (var t in new[] { "transactions", "journal", "mining", "mining_delta", "industry_jobs", "market_orders", "characters", "tokens", "sync_state", "kills" })
             Db.Run($"DELETE FROM {t} WHERE character_id=$c", ("$c", DemoId));
+        Db.Run("DELETE FROM names WHERE id IN (90000202, 90000203)");
         Db.Run("DELETE FROM session_samples WHERE session_id IN (SELECT id FROM sessions WHERE character_id=$c)", ("$c", DemoId));
         Db.Run("DELETE FROM sessions WHERE character_id=$c", ("$c", DemoId));
     }
