@@ -74,6 +74,13 @@ const METRICS = {
   mining:  { label: 'MINING',  render: d => d.active && d.mining > 0 ? { text: fmt(d.mining), cls: '' } : { text: '–', cls: '' } },
 };
 
+// Anzeige-Beruhigung für den Stream: Zahlen ändern sich nur, wenn CCP wirklich neue
+// Daten geliefert hat (Kontostand/Mining), nicht bei jedem Abfrage-Tick. ISK/h enthält
+// die laufende Zeit als Divisor und würde sonst ständig kriechen — sie wird höchstens
+// alle 5 Minuten neu berechnet (und sofort bei Session-Start/-Stopp).
+const RATE_HOLD_MS = 5 * 60 * 1000;
+const last = { active: null, balance: null, delta: null, mining: null, metrics: '', rate: { text: '–', cls: '' }, rateAt: 0 };
+
 async function tick(){
   const w = document.getElementById('w');
   if (!charId){ w.classList.remove('on'); return; }
@@ -82,14 +89,27 @@ async function tick(){
     if (!r.ok) throw 0;
     const d = await r.json();
 
-    document.getElementById('char').textContent = d.name || '';
-
     const keys = (d.metrics || []).filter(k => METRICS[k]);
     const list = keys.length ? keys : Object.keys(METRICS);
-    document.getElementById('row').innerHTML = list.map(k => {
-      const v = METRICS[k].render(d);
-      return `<div class="cell"><div class="label">${METRICS[k].label}</div><div class="value ${v.cls}">${v.text}</div></div>`;
-    }).join('<div class="sep"></div>');
+    const metricsKey = list.join(',');
+    const now = Date.now();
+
+    const activeChanged = d.active !== last.active;
+    const dataChanged = d.balance !== last.balance || d.delta !== last.delta || d.mining !== last.mining;
+    const layoutChanged = metricsKey !== last.metrics;
+    const rateDue = activeChanged || (now - last.rateAt >= RATE_HOLD_MS);
+
+    if (rateDue) { last.rate = METRICS.rate.render(d); last.rateAt = now; }
+
+    if (activeChanged || dataChanged || layoutChanged || rateDue) {
+      document.getElementById('char').textContent = d.name || '';
+      document.getElementById('row').innerHTML = list.map(k => {
+        const v = k === 'rate' ? last.rate : METRICS[k].render(d);
+        return `<div class="cell"><div class="label">${METRICS[k].label}</div><div class="value ${v.cls}">${v.text}</div></div>`;
+      }).join('<div class="sep"></div>');
+      last.active = d.active; last.balance = d.balance;
+      last.delta = d.delta; last.mining = d.mining; last.metrics = metricsKey;
+    }
 
     w.classList.add('on');
   } catch(e){
