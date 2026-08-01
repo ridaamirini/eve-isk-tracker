@@ -272,6 +272,19 @@ ORDER BY started_utc DESC LIMIT 50", ("$c", charId));
             var st = Sessions.Current(charId);
             var balance = Sessions.CurrentBalance(charId);
             var name = Db.Scalar("SELECT name FROM characters WHERE character_id=$c", ("$c", charId));
+
+            // Aufschlüsselung fürs HUD: Bounties und Missionen im Session-Fenster.
+            // Quelle ist das Journal — hinkt bis zu 1h nach, daher zeigt das Widget "ca."
+            double bounties = 0, missions = 0;
+            if (st.Active)
+            {
+                var started = Util.ParseIso(st.StartedUtc);
+                bounties = Analytics.SumRefTypes(charId, started, Util.UtcNow,
+                    "bounty_prizes", "bounty_prize", "bounty", "ess_escrow_transfer");
+                missions = Analytics.SumRefTypes(charId, started, Util.UtcNow,
+                    "agent_mission_reward", "agent_mission_time_bonus_reward", "mission_reward", "mission_completion");
+            }
+
             return Results.Ok(new
             {
                 active = st.Active,
@@ -280,6 +293,8 @@ ORDER BY started_utc DESC LIMIT 50", ("$c", charId));
                 delta = st.Delta,
                 iskPerHour = st.IskPerHour,
                 mining = st.MiningValue,
+                bounties,
+                missions,
                 hours = st.Hours,
                 // Auswahl der Kacheln und Haltezeit wandern mit — so greifen Änderungen
                 // im Widget binnen Sekunden, ohne die Browser-Quelle anzufassen

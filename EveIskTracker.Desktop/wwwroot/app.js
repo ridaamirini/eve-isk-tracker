@@ -454,13 +454,16 @@ async function loadSessionHistory() {
 // ---------- Overlay-Screen ----------
 
 const METRIC_DEFS = [
+  { key: 'time', name: 'Timer', label: 'SESSION' },
+  { key: 'session', name: 'Session-ISK', label: 'SESSION-ISK' },
+  { key: 'rate', name: 'ISK/h', label: 'ISK/STUNDE' },
+  { key: 'bounties', name: 'Bounties', label: 'BOUNTIES CA.' },
+  { key: 'missions', name: 'Missionen', label: 'MISSIONEN CA.' },
+  { key: 'mining', name: 'Mining', label: 'MINING-WERT' },
   { key: 'wallet', name: 'Wallet', label: 'WALLET' },
-  { key: 'rate', name: 'ISK/h', label: 'ISK/H' },
-  { key: 'session', name: 'Session', label: 'SESSION' },
-  { key: 'mining', name: 'Mining', label: 'MINING' },
 ];
 const activeMetrics = () =>
-  ((S.status && S.status.overlayMetrics) || 'wallet,rate,session,mining').split(',').filter(Boolean);
+  ((S.status && S.status.overlayMetrics) || 'time,session,rate,mining').split(',').filter(Boolean);
 
 async function loadOverlayScreen() {
   if (!S.charId) return;
@@ -471,13 +474,19 @@ async function loadOverlayScreen() {
   const cell = k => {
     let text = '–', cls = '';
     if (k === 'wallet') text = fmtIsk(d.balance);
+    if (k === 'time' && d.active) text = sessionClock(d.hours);
     if (k === 'rate' && d.active) { text = signed(d.iskPerHour); cls = 'accent'; }
     if (k === 'session' && d.active) { text = signed(d.delta); cls = d.delta > 0 ? 'pos' : d.delta < 0 ? 'neg' : ''; }
+    if (k === 'bounties' && d.active && d.bounties > 0) { text = fmtIsk(d.bounties); cls = 'pos'; }
+    if (k === 'missions' && d.active && d.missions > 0) { text = fmtIsk(d.missions); cls = 'pos'; }
     if (k === 'mining' && d.active && d.mining > 0) text = fmtIsk(d.mining);
     const def = METRIC_DEFS.find(m => m.key === k);
     return `<div class="pw-cell"><div class="pw-label">${def.label}</div><div class="pw-value ${cls}">${text}</div></div>`;
   };
-  $('pvRow').innerHTML = act.map(cell).join('<div class="pw-sep"></div>');
+  // wie im Widget: bis 4 Kacheln eine Reihe, ab 5 zwei ausgewogene Reihen
+  const rows = act.length <= 4 ? [act] : [act.slice(0, Math.ceil(act.length / 2)), act.slice(Math.ceil(act.length / 2))];
+  $('pvRow').innerHTML = rows.map(r =>
+    '<div class="pw-row">' + r.map(cell).join('<div class="pw-sep"></div>') + '</div>').join('');
 
   $('metricToggles').innerHTML = METRIC_DEFS.map(m =>
     `<span class="tag ${act.includes(m.key) ? 'tag-accent' : 'tag-off'} click" data-metric="${m.key}">${m.name}</span>`).join('');

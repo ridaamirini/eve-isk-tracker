@@ -8,7 +8,7 @@ Activity, Mining, Einnahmen-Donut), **Wallet** (Journal, 30-Tage-Kurve, CSV-Expo
 (Widget-Vorschau und -Konfiguration), **Settings** (ESI-Verbindung, App-Registrierung).
 Charakterwechsel unten links in der Sidebar.
 
-**Das Stream-Widget ist 420 × 128 px** („ISK TRACKER · LIVE") und wird in Streamlabs/OBS
+**Das Stream-Widget ist 420 × 240 px** („ISK TRACKER · LIVE") und wird in Streamlabs/OBS
 als Browser-Quelle mit genau dieser Größe angelegt — frei positionierbar, Hintergrund
 transparent. Welche Werte es zeigt (Wallet, ISK/h, Session, Mining), wählst du auf der
 Stream-Overlay-Seite per Klick an und ab; Änderungen übernimmt das Widget binnen Sekunden
@@ -95,14 +95,17 @@ im Hintergrund aktuell.
 
 1. In der App: **Stream Overlay** → **Copy source URL** (oder Tray-Menü → Widget-URL kopieren)
 2. Streamlabs → Szene *Live* → **Quellen** → **+** → **Browserquelle**
-3. URL einfügen, **Breite 420, Höhe 128**, dann frei in der Szene positionieren
+3. URL einfügen, **Breite 420, Höhe 240**, dann frei in der Szene positionieren
    (im Design vorgesehen: unten links)
 4. Hintergrund ist transparent; die Vorschau auf der Stream-Overlay-Seite zeigt,
    wie es in der Szene wirkt
 
-Das Widget zeigt Wallet, ISK/h, Session-ISK und Mining. Ohne laufende Session nur den
-Kontostand. Alternativ gibt es auf der Stream-Overlay-Seite eine Textdatei-Ausgabe für
-klassische Textquellen.
+Wählbare Kacheln (Stream-Overlay-Seite, anklicken): **Session-Timer, Session-ISK, ISK/h,
+Bounties, Missionen, Mining-Wert, Wallet** — bis zu 4 in einer Reihe, ab 5 zwei Reihen.
+Bounties und Missionen tragen ein „ca.", weil sie aus dem Journal stammen (bis zu 1h
+Verzögerung durch CCPs Cache). Ohne laufende Session zeigt das Widget nur den Kontostand.
+Alternativ gibt es auf der Stream-Overlay-Seite eine Textdatei-Ausgabe für klassische
+Textquellen.
 
 Damit das Widget während des Streams funktioniert, muss die App laufen (Fenster darf
 zu sein — Tray genügt).

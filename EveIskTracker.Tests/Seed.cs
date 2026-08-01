@@ -86,6 +86,12 @@ public static class Seed
         J(4, "transaction_tax", -2_080_000);
         J(2, "brokers_fee", -930_000);
 
+        // Buchungen innerhalb der Demo-Session (letzte ~3,5h), damit die
+        // Bounty-/Missions-Kacheln des Widgets etwas zu zeigen haben
+        J(0.04, "bounty_prizes", 6_800_000);
+        J(0.07, "bounty_prizes", 2_500_000);
+        J(0.10, "agent_mission_reward", 1_500_000);
+
         // Markterlöse, damit der Einnahmen-Donut ein Trading-Segment hat
         for (var d = 0; d < 28; d += 2)
         {

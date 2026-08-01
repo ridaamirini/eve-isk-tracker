@@ -31,12 +31,13 @@ public static class Config
         set => Db.SetKv("overlay_txt", value?.Trim());
     }
 
-    public static readonly string[] KnownMetrics = { "wallet", "rate", "session", "mining" };
+    /// <summary>Reihenfolge hier = Anzeige-Reihenfolge im Widget (nach dem Vorbild klassischer Session-HUDs).</summary>
+    public static readonly string[] KnownMetrics = { "time", "session", "rate", "bounties", "missions", "mining", "wallet" };
 
     /// <summary>Welche Werte das Stream-Widget zeigt — Komma-Liste, Reihenfolge fest.</summary>
     public static string OverlayMetrics
     {
-        get => Db.GetKv("overlay_metrics", "wallet,rate,session,mining");
+        get => Db.GetKv("overlay_metrics", "time,session,rate,mining");
         set
         {
             // nur bekannte Schlüssel, Reihenfolge normiert; leer fällt auf alle zurück

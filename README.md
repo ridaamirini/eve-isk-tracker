@@ -24,9 +24,10 @@ Historie zurück, auch über das hinaus, was das Spiel selbst noch anzeigt.
   Industrie, Session-Historie
 - **Sessions** — Start/Stopp per Klick, ISK-Differenz und ISK/h live, Zuordnung von
   Mining-Erträgen zum Session-Zeitfenster
-- **Stream-Widget** — 420 × 128 px Browser-Quelle („ISK TRACKER · LIVE") mit Wallet ·
-  ISK/h · Session · Mining, per Klick an-/abwählbar, transparenter Hintergrund,
-  Vorschau in der App; Update-Countdown im Dashboard zeigt, von wann der Stand ist
+- **Stream-Widget** — 420 × 240 px Browser-Quelle („ISK TRACKER · LIVE") im Stil klassischer
+  Session-HUDs: Timer · Session-ISK · ISK/h · Bounties · Missionen · Mining · Wallet, jede
+  Kachel per Klick an-/abwählbar (bis zu zwei Reihen), transparenter Hintergrund, Vorschau
+  in der App; Update-Countdown im Dashboard zeigt, von wann der Stand ist
 
 | Wallet | Stream-Widget |
 |---|---|
@@ -63,7 +64,7 @@ eigenen Browser auf `localhost` zurück. Ausführliche Schritte: [ANLEITUNG.md](
 
 ### Widget in OBS/Streamlabs
 
-**Stream Overlay** → **Copy source URL** → in OBS als Browser-Quelle mit **420 × 128**
+**Stream Overlay** → **Copy source URL** → in OBS als Browser-Quelle mit **420 × 240**
 anlegen. Ohne laufende Session zeigt das Widget nur den Kontostand. Die App muss dabei
 laufen (Fenster darf zu sein — sie lebt dann im Tray weiter).
 

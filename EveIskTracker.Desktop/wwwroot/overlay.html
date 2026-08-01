@@ -6,18 +6,20 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
 <style>
-  /* PULSAR-Widget aus dem Design-Handoff: 420×128, Browser-Quelle in OBS/Streamlabs */
+  /* PULSAR-Widget aus dem Design-Handoff: 420×240, Browser-Quelle in OBS/Streamlabs */
   :root{
     --bg:#0a0f16; --text:#e4ebf4; --accent:#4da3ff;
     --accent-200:#b6d8ff; --accent-800:#1c3d61;
     --n400:#99a4b5; --n700:#464f5e;
   }
-  html,body{margin:0;padding:0;background:transparent;overflow:hidden;width:420px;height:128px}
-  /* body positionieren, damit sich die Kachel an den 420×128 ausrichtet und nicht
+  /* 420×240: Platz für bis zu zwei Kachelreihen. Bei nur einer Reihe bleibt der
+     untere Bereich schlicht transparent. */
+  html,body{margin:0;padding:0;background:transparent;overflow:hidden;width:420px;height:240px}
+  /* body positionieren, damit sich die Kachel an den 420×240 ausrichtet und nicht
      am Fenster — sonst verzerrt sie, sobald die Quelle nicht exakt passt */
   body{position:relative}
   #w{
-    position:absolute;inset:4px;
+    position:absolute;top:4px;left:4px;right:4px;
     border-radius:8px;border:1px solid var(--accent-800);
     background:color-mix(in srgb,var(--bg) 88%,transparent);
     box-shadow:0 0 0 1px rgba(44,51,63,.6),0 16px 40px rgba(0,0,0,.65),0 0 24px color-mix(in srgb,var(--accent) 15%,transparent);
@@ -50,7 +52,7 @@
     <span class="title">ISK TRACKER · LIVE</span>
     <span class="char" id="char">–</span>
   </div>
-  <div class="row" id="row"></div>
+  <div id="rows"></div>
 </div>
 
 <script>
@@ -66,12 +68,22 @@ function fmt(v){
 }
 const signed = v => (v < 0 ? '−' : '+') + fmt(v);
 
-// Welche Kacheln es gibt; die Auswahl kommt vom Server (in der App umschaltbar)
+// Welche Kacheln es gibt; die Auswahl kommt vom Server (in der App umschaltbar).
+// "CA." bei Bounties/Missionen: die Werte stammen aus dem Journal, das CCP bis zu
+// eine Stunde cached — sie laufen der großen Session-Zahl also hinterher.
+const clock = h => {
+  const s = Math.max(0, Math.round(h * 3600));
+  const p = n => String(n).padStart(2, '0');
+  return `${p(Math.floor(s / 3600))}:${p(Math.floor(s / 60) % 60)}:${p(s % 60)}`;
+};
 const METRICS = {
-  wallet:  { label: 'WALLET',  render: d => ({ text: fmt(d.balance), cls: '' }) },
-  rate:    { label: 'ISK/H',   render: d => d.active ? { text: signed(d.iskPerHour), cls: 'accent' } : { text: '–', cls: '' } },
-  session: { label: 'SESSION', render: d => d.active ? { text: signed(d.delta), cls: d.delta > 0 ? 'pos' : d.delta < 0 ? 'neg' : '' } : { text: '–', cls: '' } },
-  mining:  { label: 'MINING',  render: d => d.active && d.mining > 0 ? { text: fmt(d.mining), cls: '' } : { text: '–', cls: '' } },
+  time:     { label: 'SESSION',       render: d => d.active ? { text: clock(d.hours), cls: '', timer: true } : { text: '–', cls: '' } },
+  session:  { label: 'SESSION-ISK',   render: d => d.active ? { text: signed(d.delta), cls: d.delta > 0 ? 'pos' : d.delta < 0 ? 'neg' : '' } : { text: '–', cls: '' } },
+  rate:     { label: 'ISK/STUNDE',    render: d => d.active ? { text: signed(d.iskPerHour), cls: 'accent' } : { text: '–', cls: '' } },
+  bounties: { label: 'BOUNTIES CA.',  render: d => d.active && d.bounties > 0 ? { text: fmt(d.bounties), cls: 'pos' } : { text: '–', cls: '' } },
+  missions: { label: 'MISSIONEN CA.', render: d => d.active && d.missions > 0 ? { text: fmt(d.missions), cls: 'pos' } : { text: '–', cls: '' } },
+  mining:   { label: 'MINING-WERT',   render: d => d.active && d.mining > 0 ? { text: fmt(d.mining), cls: '' } : { text: '–', cls: '' } },
+  wallet:   { label: 'WALLET',        render: d => ({ text: fmt(d.balance), cls: '' }) },
 };
 
 // Anzeige-Beruhigung für den Stream: Zahlen ändern sich nur, wenn CCP wirklich neue
@@ -80,7 +92,16 @@ const METRICS = {
 // alle 5 Minuten neu berechnet (und sofort bei Session-Start/-Stopp).
 // Haltezeit kommt vom Server mit (in den Settings einstellbar), Standard 5 min
 let rateHoldMs = 5 * 60 * 1000;
-const last = { active: null, balance: null, delta: null, mining: null, metrics: '', rate: { text: '–', cls: '' }, rateAt: 0 };
+let sessionStartMs = null;   // für den lokal tickenden Timer
+const last = { active: null, balance: null, delta: null, mining: null, bounties: null, missions: null,
+               metrics: '', rate: { text: '–', cls: '' }, rateAt: 0 };
+
+// Bis zu 4 Kacheln pro Reihe, ab 5 ausgewogen auf zwei Reihen verteilt
+function chunkRows(list){
+  if (list.length <= 4) return [list];
+  const half = Math.ceil(list.length / 2);
+  return [list.slice(0, half), list.slice(half)];
+}
 
 async function tick(){
   const w = document.getElementById('w');
@@ -96,9 +117,11 @@ async function tick(){
     const now = Date.now();
 
     if (d.rateHold) rateHoldMs = d.rateHold * 1000;
+    sessionStartMs = d.active ? now - d.hours * 3600000 : null;
 
     const activeChanged = d.active !== last.active;
-    const dataChanged = d.balance !== last.balance || d.delta !== last.delta || d.mining !== last.mining;
+    const dataChanged = d.balance !== last.balance || d.delta !== last.delta || d.mining !== last.mining
+                     || d.bounties !== last.bounties || d.missions !== last.missions;
     const layoutChanged = metricsKey !== last.metrics;
     const rateDue = activeChanged || (now - last.rateAt >= rateHoldMs);
 
@@ -106,12 +129,15 @@ async function tick(){
 
     if (activeChanged || dataChanged || layoutChanged || rateDue) {
       document.getElementById('char').textContent = d.name || '';
-      document.getElementById('row').innerHTML = list.map(k => {
-        const v = k === 'rate' ? last.rate : METRICS[k].render(d);
-        return `<div class="cell"><div class="label">${METRICS[k].label}</div><div class="value ${v.cls}">${v.text}</div></div>`;
-      }).join('<div class="sep"></div>');
-      last.active = d.active; last.balance = d.balance;
-      last.delta = d.delta; last.mining = d.mining; last.metrics = metricsKey;
+      document.getElementById('rows').innerHTML = chunkRows(list).map(row =>
+        '<div class="row">' + row.map(k => {
+          const v = k === 'rate' ? last.rate : METRICS[k].render(d);
+          const id = v.timer ? ' id="tmr"' : '';
+          return `<div class="cell"><div class="label">${METRICS[k].label}</div><div class="value ${v.cls}"${id}>${v.text}</div></div>`;
+        }).join('<div class="sep"></div>') + '</div>').join('');
+      last.active = d.active; last.balance = d.balance; last.delta = d.delta;
+      last.mining = d.mining; last.bounties = d.bounties; last.missions = d.missions;
+      last.metrics = metricsKey;
     }
 
     w.classList.add('on');
@@ -120,6 +146,13 @@ async function tick(){
     w.classList.remove('on');
   }
 }
+
+// Der Timer tickt lokal jede Sekunde — das einzige bewusst "lebendige" Element
+setInterval(() => {
+  const el = document.getElementById('tmr');
+  if (el && sessionStartMs !== null)
+    el.textContent = clock((Date.now() - sessionStartMs) / 3600000);
+}, 1000);
 
 tick();
 // 5s: fragt nur die lokale App, kein Verkehr zu CCP — neue Werte erscheinen
