@@ -13,7 +13,7 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': 
 // Schlüssel -> [deutsch, englisch]. Statische Texte tragen data-i18n(-html/-ph)
 // im HTML; dynamische Strings laufen durch t().
 
-let LANG = 'de';
+let LANG = 'en';
 const t = k => (L[k] || [k, k])[LANG === 'en' ? 1 : 0];
 const NUMLOC = () => LANG === 'en' ? 'en-US' : 'de-DE';
 
@@ -130,6 +130,10 @@ const L = {
   phClientId: ['leer = Standard-App (eingebaut)', 'empty = default app (built-in)'],
   charLabel: ['Charakter im Widget', 'Character in widget'],
   charToggleName: ['Portrait & Name', 'Portrait & name'],
+  autoStopLabel: ['Session automatisch beenden', 'Auto-end session'],
+  autoStopName: ['Wenn der EVE-Client schließt', 'When the EVE client closes'],
+  autoStopNote: ['Beendet offene Sessions, wenn der EVE-Client (exefile.exe) beim App-Start nicht läuft oder im Betrieb länger als 3 Minuten geschlossen ist.',
+                 'Ends open sessions when the EVE client (exefile.exe) is not running at app start, or has been closed for more than 3 minutes.'],
   contactLabel: ['Kontakt (E-Mail oder Charaktername)', 'Contact (e-mail or character name)'],
   regNote: ['Kein Passwort, kein Client-Secret: der Login läuft über CCPs eigene Seite, hier liegt nur ein Windows-verschlüsseltes Zugriffstoken.',
             'No password, no client secret: sign-in happens on CCP\'s own page; only a Windows-encrypted access token is stored here.'],
@@ -321,7 +325,7 @@ async function loadStatus() {
   S.status = await api('/api/status');
   const st = S.status;
 
-  if ((st.lang || 'de') !== LANG) { LANG = st.lang || 'de'; applyLang(); }
+  if ((st.lang || 'en') !== LANG) { LANG = st.lang || 'en'; applyLang(); }
   document.querySelectorAll('#langSeg .seg-opt').forEach(x =>
     x.classList.toggle('on', x.dataset.lang === LANG));
 
@@ -376,6 +380,10 @@ async function loadStatus() {
   // Timing-Karte: aktive Glättungsstufe markieren
   document.querySelectorAll('#rateHoldSeg .seg-opt').forEach(x =>
     x.classList.toggle('on', Number(x.dataset.hold) === (st.rateHold || 300)));
+
+  // Auto-Stopp-Schalter (Session endet mit dem EVE-Client)
+  $('autoStopToggle').innerHTML =
+    `<span class="tag ${st.sessionAutoStop ? 'tag-accent' : 'tag-off'} click" data-autostop="${st.sessionAutoStop ? 0 : 1}">${t('autoStopName')}</span>`;
 
   $('charAdmin').innerHTML = chars.map(c => `
     <div class="row" style="border:1px solid var(--color-neutral-800);border-radius:8px;padding:10px 12px">
@@ -724,6 +732,18 @@ async function loadOverlayScreen() {
   $('metricToggles').innerHTML = defs.map(m =>
     `<span class="tag ${act.includes(m.key) ? 'tag-accent' : 'tag-off'} click" data-metric="${m.key}">${m.name}</span>`).join('');
 }
+
+$('autoStopToggle').addEventListener('click', async e => {
+  const b = e.target.closest('[data-autostop]');
+  if (!b) return;
+  try {
+    await api('/api/config', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionAutoStop: b.dataset.autostop }),
+    });
+    await loadStatus();
+  } catch (err) { alert(t('saveFail') + err.message); }
+});
 
 $('charToggle').addEventListener('click', async e => {
   const b = e.target.closest('[data-char-toggle]');

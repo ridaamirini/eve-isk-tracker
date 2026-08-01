@@ -43,6 +43,8 @@ public class SyncService : BackgroundService
         await Task.Delay(2000, stop);
         while (!stop.IsCancellationRequested)
         {
+            try { CheckEveClient(); }
+            catch (Exception ex) { _log.LogWarning(ex, "EVE-Client-Pruefung fehlgeschlagen"); }
             try { await RunOnce(stop); }
             catch (Exception ex) { _log.LogError(ex, "Sync-Durchlauf fehlgeschlagen"); LastMessage = "Fehler: " + ex.Message; }
             // Kurzer Prüftakt, damit frische CCP-Daten zeitnah abgeholt werden.
@@ -50,6 +52,61 @@ public class SyncService : BackgroundService
             // zwischen zwei echten Abrufen passiert hier nichts außer einem Zeitvergleich.
             await Task.Delay(TimeSpan.FromSeconds(20), stop);
         }
+    }
+
+    // ---------------- EVE-Client-Überwachung ----------------
+
+    private DateTime? _eveLastSeen;
+    private bool _startupChecked;
+
+    /// <summary>
+    /// Beendet offene Sessions automatisch, wenn der EVE-Client (exefile.exe) zu ist:
+    /// beim App-Start sofort (Client läuft gar nicht), im Betrieb nach 3 Minuten Karenz —
+    /// die übersteht einen Client-Absturz mit schnellem Neustart. Abschaltbar in den Settings.
+    /// </summary>
+    private void CheckEveClient()
+    {
+        if (!Config.SessionAutoStop) { _startupChecked = true; return; }
+
+        var running = System.Diagnostics.Process.GetProcessesByName("exefile").Length > 0;
+        var now = Util.UtcNow;
+
+        if (running)
+        {
+            _eveLastSeen = now;
+            _startupChecked = true;
+            return;
+        }
+
+        var activeChars = CharsWithActiveSession();
+        if (activeChars.Count == 0) { _startupChecked = true; return; }
+
+        var stopNow =
+            // App-Start: Session offen (z.B. über Nacht), aber kein Client da
+            (!_startupChecked && _eveLastSeen == null) ||
+            // Betrieb: Client war da und ist seit >3 min verschwunden
+            (_eveLastSeen.HasValue && (now - _eveLastSeen.Value) > TimeSpan.FromMinutes(3));
+
+        _startupChecked = true;
+        if (!stopNow) return;
+
+        foreach (var charId in activeChars)
+        {
+            Sessions.Stop(charId);
+            _log.LogInformation("Session von {c} automatisch beendet (EVE-Client geschlossen)", charId);
+        }
+        _eveLastSeen = null;
+        LastMessage = "Session automatisch beendet (EVE-Client zu)";
+    }
+
+    private static List<long> CharsWithActiveSession()
+    {
+        var list = new List<long>();
+        using var c = Db.Open();
+        using var cmd = Db.Cmd(c, "SELECT DISTINCT character_id FROM sessions WHERE ended_utc IS NULL");
+        using var r = cmd.ExecuteReader();
+        while (r.Read()) list.Add(r.GetInt64(0));
+        return list;
     }
 
     public async Task RunOnce(CancellationToken stop = default, bool force = false)

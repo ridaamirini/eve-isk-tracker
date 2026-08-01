@@ -83,6 +83,7 @@ WHERE last_error IS NOT NULL
                 overlayMetrics = Config.OverlayMetrics,
                 rateHold = Config.RateHoldSeconds,
                 overlayChar = Config.OverlayShowChar,
+                sessionAutoStop = Config.SessionAutoStop,
                 redirectUri = Sso.RedirectUri,
                 scopes = Sso.Scopes,
                 characters = chars,
@@ -104,6 +105,7 @@ WHERE last_error IS NOT NULL
             if (form.TryGetValue("rateHold", out var rh) && int.TryParse(rh, out var rhv)) Config.RateHoldSeconds = rhv;
             if (form.TryGetValue("lang", out var lg)) Config.Lang = lg;
             if (form.TryGetValue("overlayChar", out var oc)) Config.OverlayShowChar = oc != "0";
+            if (form.TryGetValue("sessionAutoStop", out var sa)) Config.SessionAutoStop = sa != "0";
             return Results.Ok(new { ok = true });
         });
 

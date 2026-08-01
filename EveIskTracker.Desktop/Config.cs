@@ -75,6 +75,13 @@ public static class Config
         set => Db.SetKv("rate_hold", Math.Clamp(value, 60, 3600).ToString());
     }
 
+    /// <summary>Sessions automatisch beenden, wenn der EVE-Client (exefile.exe) schließt.</summary>
+    public static bool SessionAutoStop
+    {
+        get => Db.GetKv("session_autostop", "1") != "0";
+        set => Db.SetKv("session_autostop", value ? "1" : "0");
+    }
+
     /// <summary>Zeigt das Widget Charakter-Portrait und -Namen im Kopf? (Opsec-Schalter)</summary>
     public static bool OverlayShowChar
     {
@@ -82,11 +89,11 @@ public static class Config
         set => Db.SetKv("overlay_char", value ? "1" : "0");
     }
 
-    /// <summary>Oberflächensprache: "de" oder "en".</summary>
+    /// <summary>Oberflächensprache: "de" oder "en". Standard Englisch (internationales Publikum).</summary>
     public static string Lang
     {
-        get => Db.GetKv("lang", "de") == "en" ? "en" : "de";
-        set => Db.SetKv("lang", value == "en" ? "en" : "de");
+        get => Db.GetKv("lang", "en") == "de" ? "de" : "en";
+        set => Db.SetKv("lang", value == "de" ? "de" : "en");
     }
 
     public static bool IsConfigured => !string.IsNullOrWhiteSpace(ClientId);
