@@ -12,3 +12,6 @@ release/
 *.db
 *.db-wal
 *.db-shm
+
+# Build-Geheimnisse (Standard-Client-ID fuer offizielle Releases)
+release.env

@@ -71,12 +71,18 @@ WHERE last_error IS NOT NULL
 
             return Results.Ok(new
             {
+                version = typeof(WebHost).Assembly.GetName().Version?.ToString(3) ?? "?",
+                lang = Config.Lang,
                 configured = Config.IsConfigured,
-                clientId = Config.ClientId,
+                // nur die selbst eingetragene ID anzeigen — leeres Feld heißt: Standard-App aktiv
+                clientId = Config.ClientIdRaw,
+                hasDefaultApp = !string.IsNullOrWhiteSpace(Config.DefaultClientId),
+                usingDefaultApp = !string.IsNullOrWhiteSpace(Config.DefaultClientId) && string.IsNullOrWhiteSpace(Config.ClientIdRaw),
                 contact = Config.Contact,
                 overlayTextPath = Config.OverlayTextPath,
                 overlayMetrics = Config.OverlayMetrics,
                 rateHold = Config.RateHoldSeconds,
+                overlayChar = Config.OverlayShowChar,
                 redirectUri = Sso.RedirectUri,
                 scopes = Sso.Scopes,
                 characters = chars,
@@ -96,6 +102,8 @@ WHERE last_error IS NOT NULL
             if (form.TryGetValue("overlayTextPath", out var op)) Config.OverlayTextPath = op;
             if (form.TryGetValue("overlayMetrics", out var om)) Config.OverlayMetrics = om;
             if (form.TryGetValue("rateHold", out var rh) && int.TryParse(rh, out var rhv)) Config.RateHoldSeconds = rhv;
+            if (form.TryGetValue("lang", out var lg)) Config.Lang = lg;
+            if (form.TryGetValue("overlayChar", out var oc)) Config.OverlayShowChar = oc != "0";
             return Results.Ok(new { ok = true });
         });
 
@@ -314,6 +322,9 @@ WHERE character_id=$c AND is_loss=0 AND time_utc >= $f",
                 // im Widget binnen Sekunden, ohne die Browser-Quelle anzufassen
                 metrics = Config.OverlayMetrics.Split(','),
                 rateHold = Config.RateHoldSeconds,
+                lang = Config.Lang,
+                showChar = Config.OverlayShowChar,
+                charId,
             });
         });
 

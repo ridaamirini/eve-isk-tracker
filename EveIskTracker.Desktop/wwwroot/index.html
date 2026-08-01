@@ -38,8 +38,8 @@
         <div class="char-box" id="charBox">
           <div class="char-avatar" id="charAvatar">–</div>
           <div class="char-meta">
-            <div class="char-name" id="charName">Kein Charakter</div>
-            <div class="char-sub" id="charSub">bitte anmelden</div>
+            <div class="char-name" id="charName" data-i18n="noChar">Kein Charakter</div>
+            <div class="char-sub" id="charSub" data-i18n="pleaseLogin">bitte anmelden</div>
           </div>
           <i class="ph ph-caret-up-down"></i>
         </div>
@@ -57,7 +57,7 @@
         <span class="head-note" id="dashNote">–</span>
         <span class="head-note" id="updNote" style="margin-left:auto"></span>
         <span class="tag tag-accent" id="liveTag">LIVE · ESI connected</span>
-        <button class="btn btn-primary" id="btnSession">Session starten</button>
+        <button class="btn btn-primary" id="btnSession" data-i18n="sessionStart">Session starten</button>
       </div>
       <div class="head-rule"></div>
       <div id="dashBanners"></div>
@@ -71,17 +71,17 @@
         <div class="card stat">
           <div class="stat-top"><span class="stat-label">ISK / HOUR</span><i class="ph ph-timer"></i></div>
           <div class="stat-value" id="stRate">–</div>
-          <div class="stat-sub" id="stRateSub">Ø diese Session</div>
+          <div class="stat-sub" id="stRateSub" data-i18n="rateSub">Ø diese Session</div>
         </div>
         <div class="card stat">
           <div class="stat-top"><span class="stat-label">SESSION ISK</span><i class="ph ph-lightning"></i></div>
           <div class="stat-value" id="stSession">–</div>
-          <div class="stat-sub" id="stSessionSub">keine Session</div>
+          <div class="stat-sub" id="stSessionSub" data-i18n="noSession">keine Session</div>
         </div>
         <div class="card stat">
           <div class="stat-top"><span class="stat-label">MINING YIELD</span><i class="ph ph-cube"></i></div>
           <div class="stat-value" id="stMining">–</div>
-          <div class="stat-sub" id="stMiningSub">heute · Marktwert</div>
+          <div class="stat-sub" id="stMiningSub" data-i18n="miningSubDefault">heute · Marktwert</div>
         </div>
       </div>
 
@@ -99,18 +99,18 @@
 
         <div class="card pad">
           <div class="row" style="margin-bottom:10px"><span class="kicker">RECENT ACTIVITY</span><span class="head-note" style="margin-left:auto" id="recentNote"></span></div>
-          <div class="list" id="recentList"><div class="empty">Noch keine Buchungen.</div></div>
+          <div class="list" id="recentList"><div class="empty" data-i18n="noEntries">Noch keine Buchungen.</div></div>
         </div>
       </div>
 
       <div class="grid2">
         <div class="card pad">
-          <span class="kicker">MINING · HEUTE</span>
-          <div class="ores" id="oreList"><div class="empty">Heute noch nichts geschürft.</div></div>
+          <span class="kicker" data-i18n="kMiningToday">MINING · HEUTE</span>
+          <div class="ores" id="oreList"><div class="empty" data-i18n="noMiningToday">Heute noch nichts geschürft.</div></div>
         </div>
         <div class="card pad">
           <span class="kicker">INCOME SPLIT · 7D</span>
-          <div class="split" id="splitBox"><div class="empty">Noch keine Einnahmen erfasst.</div></div>
+          <div class="split" id="splitBox"><div class="empty" data-i18n="noIncome7d">Noch keine Einnahmen erfasst.</div></div>
         </div>
       </div>
     </div>
@@ -119,10 +119,10 @@
     <div class="screen hidden" id="screen-wallet">
       <div class="page-head">
         <h1>Wallet</h1>
-        <span class="head-note">Journal · Hauptwallet</span>
+        <span class="head-note" data-i18n="walletSub">Journal · Hauptwallet</span>
         <div style="margin-left:auto;display:flex;gap:8px">
           <a class="btn btn-secondary" id="btnCsv" href="#"><i class="ph ph-export"></i> Export CSV</a>
-          <button class="btn btn-primary" id="btnRefresh"><i class="ph ph-arrows-clockwise"></i> Refresh</button>
+          <button class="btn btn-primary" id="btnRefresh"><i class="ph ph-arrows-clockwise"></i> <span data-i18n="refresh">Aktualisieren</span></button>
         </div>
       </div>
       <div class="head-rule"></div>
@@ -140,8 +140,8 @@
 
       <div class="card" style="margin-top:14px;padding:4px 0;overflow:hidden">
         <table class="table">
-          <thead><tr><th>Zeit</th><th>Typ</th><th>Beschreibung</th><th class="num">Betrag</th><th class="num">Kontostand</th></tr></thead>
-          <tbody id="journalRows"><tr><td colspan="5" class="empty">Noch keine Buchungen.</td></tr></tbody>
+          <thead><tr><th data-i18n="thTime">Zeit</th><th data-i18n="thType">Typ</th><th data-i18n="thDesc">Beschreibung</th><th class="num" data-i18n="thAmount">Betrag</th><th class="num" data-i18n="thBalance">Kontostand</th></tr></thead>
+          <tbody id="journalRows"><tr><td colspan="5" class="empty" data-i18n="noEntries">Noch keine Buchungen.</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -150,18 +150,18 @@
     <div class="screen hidden" id="screen-reports">
       <div class="page-head">
         <h1>Reports</h1>
-        <span class="head-note">Handel · Ratting · Mining · Industrie</span>
+        <span class="head-note" data-i18n="reportsSub">Handel · Ratting · Mining · Industrie</span>
         <div class="seg" style="margin-left:auto" id="repRange">
-          <span class="seg-opt" data-r="today">Heute</span><span class="seg-opt" data-r="7d">7T</span><span class="seg-opt on" data-r="30d">30T</span><span class="seg-opt" data-r="90d">90T</span><span class="seg-opt" data-r="all">Alles</span>
+          <span class="seg-opt" data-r="today" data-i18n="rToday">Heute</span><span class="seg-opt" data-r="7d" data-i18n="r7">7T</span><span class="seg-opt on" data-r="30d" data-i18n="r30">30T</span><span class="seg-opt" data-r="90d" data-i18n="r90">90T</span><span class="seg-opt" data-r="all" data-i18n="rAll">Alles</span>
         </div>
       </div>
       <div class="head-rule"></div>
 
       <div class="seg" id="tabbar" style="margin-bottom:16px">
-        <span class="seg-opt on" data-tab="trading">Handel</span>
+        <span class="seg-opt on" data-tab="trading" data-i18n="tabTrading">Handel</span>
         <span class="seg-opt" data-tab="ratting">Ratting</span>
         <span class="seg-opt" data-tab="mining">Mining</span>
-        <span class="seg-opt" data-tab="industry">Industrie</span>
+        <span class="seg-opt" data-tab="industry" data-i18n="tabIndustry">Industrie</span>
         <span class="seg-opt" data-tab="kills">Kills</span>
         <span class="seg-opt" data-tab="sessions">Sessions</span>
       </div>
@@ -177,7 +177,7 @@
     <div class="screen hidden" id="screen-overlay">
       <div class="page-head">
         <h1>Stream Overlay</h1>
-        <span class="head-note">Browser-Quelle für Streamlabs/OBS · 420 × 240 px</span>
+        <span class="head-note" data-i18n="overlaySub">Browser-Quelle für Streamlabs/OBS · 420 × 240 px</span>
         <button class="btn btn-primary" style="margin-left:auto" id="btnCopyUrl"><i class="ph ph-copy"></i> Copy source URL</button>
       </div>
       <div class="head-rule"></div>
@@ -199,28 +199,31 @@
           <div class="row" style="margin-top:12px">
             <button class="btn btn-secondary" id="btnScene" style="font-size:12px">Scene preview</button>
             <button class="btn btn-ghost" id="btnChecker" style="font-size:12px">Transparent</button>
-            <span class="head-note" style="margin-left:auto;align-self:center">Hintergrund ist in OBS voll transparent</span>
+            <span class="head-note" style="margin-left:auto;align-self:center" data-i18n="transparentNote">Hintergrund ist in OBS voll transparent</span>
           </div>
         </div>
 
         <div class="card pad">
           <span class="kicker">WIDGET CONFIG</span>
           <div class="fields">
-            <div class="field"><label>Angezeigte Werte <span class="head-note">(anklicken zum An-/Abwählen)</span></label>
+            <div class="field"><label><span data-i18n="metricsLabel">Angezeigte Werte</span> <span class="head-note" data-i18n="metricsHint">(anklicken zum An-/Abwählen)</span></label>
               <div class="tagrow" id="metricToggles"></div>
             </div>
-            <div class="field"><label>Aktualisierung</label>
-              <div class="head-note">Werte ändern sich nur bei echten Kontostand-Updates (~alle 2 min);
+            <div class="field"><label data-i18n="charLabel">Charakter im Widget</label>
+              <div class="tagrow" id="charToggle"></div>
+            </div>
+            <div class="field"><label data-i18n="updLabel">Aktualisierung</label>
+              <div class="head-note" data-i18n="updNote2">Werte ändern sich nur bei echten Kontostand-Updates (~alle 2 min);
                 ISK/h wird höchstens alle 5 min neu berechnet, damit im Stream nichts kriecht</div>
             </div>
             <div class="field"><label>Source URL</label>
               <input class="input" id="srcUrl" readonly value="–">
             </div>
-            <div class="field"><label>Alternative: Textdatei für Textquellen</label>
+            <div class="field"><label data-i18n="txtLabel">Alternative: Textdatei für Textquellen</label>
               <input class="input" id="overlayTextPath" placeholder="C:\Users\...\isk.txt">
-              <button class="btn btn-secondary" id="btnSaveTxt" style="margin-top:8px;font-size:12px">Pfad speichern</button>
+              <button class="btn btn-secondary" id="btnSaveTxt" style="margin-top:8px;font-size:12px" data-i18n="savePath">Pfad speichern</button>
             </div>
-            <div class="head-note" style="line-height:1.5">In Streamlabs als Browser-Quelle mit 420×240 anlegen. Das Widget zeigt ohne laufende Session nur den Kontostand.</div>
+            <div class="head-note" style="line-height:1.5" data-i18n="overlayNote">In Streamlabs als Browser-Quelle mit 420×240 anlegen. Das Widget zeigt ohne laufende Session nur den Kontostand.</div>
           </div>
         </div>
       </div>
@@ -228,15 +231,20 @@
 
     <!-- ========== Settings ========== -->
     <div class="screen hidden" id="screen-settings" style="max-width:760px">
-      <div class="page-head"><h1>Settings</h1></div>
+      <div class="page-head"><h1>Settings</h1>
+        <div class="seg" style="margin-left:auto" id="langSeg">
+          <span class="seg-opt" data-lang="de">Deutsch</span>
+          <span class="seg-opt" data-lang="en">English</span>
+        </div>
+      </div>
       <div class="head-rule"></div>
 
       <div class="card pad" style="margin-bottom:14px">
         <span class="kicker">ESI CONNECTION</span>
         <div id="charAdmin" class="fields"></div>
         <div style="margin-top:12px;display:flex;gap:8px">
-          <a class="btn btn-secondary" href="/api/login" id="btnAddChar" style="font-size:12px"><i class="ph ph-plus"></i> Charakter anmelden</a>
-          <button class="btn btn-primary" id="btnSync" style="font-size:12px"><i class="ph ph-arrows-clockwise"></i> Jetzt abgleichen</button>
+          <a class="btn btn-secondary" href="/api/login" id="btnAddChar" style="font-size:12px"><i class="ph ph-plus"></i> <span data-i18n="addChar">Charakter anmelden</span></a>
+          <button class="btn btn-primary" id="btnSync" style="font-size:12px"><i class="ph ph-arrows-clockwise"></i> <span data-i18n="syncNow">Jetzt abgleichen</span></button>
           <span class="head-note" style="align-self:center" id="syncState">–</span>
         </div>
       </div>
@@ -244,64 +252,68 @@
       <div class="card pad" style="margin-bottom:14px">
         <span class="kicker">APP REGISTRATION</span>
         <div class="head-note" style="margin-top:8px;line-height:1.55">
-          Einmalig nötig: eigene Anwendung auf
+          <span data-i18n="regIntro1">Einmalig nötig: eigene Anwendung auf</span>
           <a href="https://developers.eveonline.com/applications" target="_blank" rel="noopener">developers.eveonline.com</a>
-          anlegen (Connection Type „Authentication &amp; API Access").
-          Callback URL exakt: <code id="redirectUri">–</code>
-          <button class="btn btn-ghost" data-copy="redirectUri" style="font-size:11px;padding:2px 6px">kopieren</button>
+          <span data-i18n="regIntro2">anlegen (Connection Type „Authentication &amp; API Access"). Callback URL exakt:</span>
+          <code id="redirectUri">–</code>
+          <button class="btn btn-ghost" data-copy="redirectUri" style="font-size:11px;padding:2px 6px" data-i18n="copy">kopieren</button>
           <div class="tagrow" id="scopeList" style="margin-top:8px"></div>
         </div>
         <div class="fields">
-          <div class="field"><label>Client ID</label><input class="input" id="clientId" autocomplete="off" placeholder="z.B. 1a2b3c4d5e6f..."></div>
-          <div class="field"><label>Kontakt (E-Mail oder Charaktername)</label><input class="input" id="contact" autocomplete="off" placeholder="deine@mail.de"></div>
-          <div><button class="btn btn-primary" id="btnSaveConfig">Speichern</button></div>
+          <div class="field"><label>Client ID</label>
+            <input class="input" id="clientId" autocomplete="off" data-i18n-ph="phClientId" placeholder="leer = Standard-App (eingebaut)">
+            <div class="head-note" style="margin-top:6px" id="clientIdNote" data-i18n="clientIdNote">Leer lassen = eingebaute Standard-App. Nur ausfüllen, wenn du deine eigene CCP-Anwendung nutzen willst.</div>
+          </div>
+          <div class="field"><label data-i18n="contactLabel">Kontakt (E-Mail oder Charaktername)</label><input class="input" id="contact" autocomplete="off" placeholder="mail@..."></div>
+          <div><button class="btn btn-primary" id="btnSaveConfig" data-i18n="save">Speichern</button></div>
         </div>
-        <div class="head-note" style="margin-top:10px">
+        <div class="head-note" style="margin-top:10px" data-i18n="regNote">
           Kein Passwort, kein Client-Secret: der Login läuft über CCPs eigene Seite,
           hier liegt nur ein Windows-verschlüsseltes Zugriffstoken.
         </div>
       </div>
 
       <div class="card pad" style="margin-bottom:14px">
-        <span class="kicker">TIMING &amp; AKTUALISIERUNG</span>
-        <div class="head-note" style="margin-top:8px;line-height:1.55">
+        <span class="kicker" data-i18n="kTiming">TIMING &amp; AKTUALISIERUNG</span>
+        <div class="head-note" style="margin-top:8px;line-height:1.55" data-i18n="timingIntro">
           CCP hält jede API-Antwort eine feste Zeit im Cache — häufigeres Abfragen liefert bis
-          dahin exakt dieselben Daten. Die App prüft alle 20&nbsp;Sekunden, ob etwas Neues
+          dahin exakt dieselben Daten. Die App prüft alle 20 Sekunden, ob etwas Neues
           bereitliegt, und holt es dann sofort:
         </div>
         <div class="tablewrap"><table class="table" style="margin-top:8px">
-          <thead><tr><th>Daten</th><th>Neu von CCP</th><th>Steckt in</th></tr></thead>
+          <thead><tr><th data-i18n="ttData">Daten</th><th data-i18n="ttFresh">Neu von CCP</th><th data-i18n="ttUsed">Steckt in</th></tr></thead>
           <tbody>
-            <tr><td>Kontostand</td><td class="num">alle 2 min</td><td>Session-Zähler, Widget, Kennzahlen</td></tr>
-            <tr><td>Journal (Buchungen)</td><td class="num">stündlich</td><td>Aufschlüsselung, Charts, Ratting, Recent Activity</td></tr>
-            <tr><td>Mining-Ledger</td><td class="num">alle 10 min</td><td>Mining-Karten, Widget-Kachel</td></tr>
-            <tr><td>Produktionsjobs</td><td class="num">alle 5 min</td><td>Industrie-Report</td></tr>
-            <tr><td>Marktorders</td><td class="num">alle 20 min</td><td>Handels-Report</td></tr>
-            <tr><td>Marktpreise</td><td class="num">stündlich</td><td>Mining-/Industrie-Bewertung</td></tr>
+            <tr><td data-i18n="tt1a">Kontostand</td><td class="num" data-i18n="tt1b">alle 2 min</td><td data-i18n="tt1c">Session-Zähler, Widget, Kennzahlen</td></tr>
+            <tr><td data-i18n="tt2a">Journal (Buchungen)</td><td class="num" data-i18n="tt2b">stündlich</td><td data-i18n="tt2c">Aufschlüsselung, Charts, Ratting, Recent Activity</td></tr>
+            <tr><td data-i18n="tt3a">Mining-Ledger</td><td class="num" data-i18n="tt3b">alle 10 min</td><td data-i18n="tt3c">Mining-Karten, Widget-Kachel</td></tr>
+            <tr><td data-i18n="tt4a">Produktionsjobs</td><td class="num" data-i18n="tt4b">alle 5 min</td><td data-i18n="tt4c">Industrie-Report</td></tr>
+            <tr><td data-i18n="tt5a">Marktorders</td><td class="num" data-i18n="tt5b">alle 20 min</td><td data-i18n="tt5c">Handels-Report</td></tr>
+            <tr><td data-i18n="tt6a">Marktpreise</td><td class="num" data-i18n="tt6b">stündlich</td><td data-i18n="tt6c">Mining-/Industrie-Bewertung</td></tr>
           </tbody>
         </table></div>
         <div class="fields">
-          <div class="field"><label>ISK/h-Glättung im Stream-Widget</label>
+          <div class="field"><label data-i18n="rateHoldLabel">ISK/h-Glättung im Stream-Widget</label>
             <div class="seg" id="rateHoldSeg">
               <span class="seg-opt" data-hold="120">2 min</span>
               <span class="seg-opt" data-hold="300">5 min</span>
               <span class="seg-opt" data-hold="600">10 min</span>
             </div>
-            <div class="head-note" style="margin-top:8px;line-height:1.55">
+            <div class="head-note" style="margin-top:8px;line-height:1.55" data-i18n-html="rateHoldNote">
               Das Widget übernimmt Zahlen grundsätzlich nur, wenn CCP wirklich neue Daten
               geliefert hat — dazwischen steht die Anzeige still. Einzige Ausnahme ist
-              <b>ISK/h</b>: dieser Wert ist „verdientes ISK geteilt durch verstrichene Zeit"
-              und würde ständig weiterkriechen, weil die Zeit ja immer weiterläuft. Deshalb wird
-              er nur im hier gewählten Abstand neu berechnet (bei Session-Start/-Stopp sofort).
-              Kürzer = aktueller, länger = ruhigeres Bild im Stream.
+              <b>ISK/h</b>: dieser Wert wird nur im hier gewählten Abstand neu berechnet.
             </div>
           </div>
         </div>
       </div>
 
       <div class="card pad">
-        <span class="kicker">DATA</span>
-        <div class="head-note" style="margin-top:8px">Alle Daten lokal in <code id="dbPath">–</code></div>
+        <span class="kicker">ABOUT</span>
+        <div class="head-note" style="margin-top:8px">
+          EVE ISK Tracker <span id="appVersion" class="tag tag-neutral" style="margin:0 4px">–</span>
+          · <span data-i18n="aboutData">Alle Daten lokal in</span> <code id="dbPath">–</code>
+          · <a href="https://github.com/ridaamirini/eve-isk-tracker" target="_blank" rel="noopener">GitHub</a>
+        </div>
       </div>
     </div>
 

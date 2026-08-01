@@ -8,6 +8,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>EveIskTracker</RootNamespace>
     <AssemblyName>EveIskTracker</AssemblyName>
+    <Version>0.0.1</Version>
+    <Product>EVE ISK Tracker</Product>
+    <Authors>Rida Amirini</Authors>
     <InvariantGlobalization>true</InvariantGlobalization>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
@@ -15,6 +18,11 @@
          die Taskleiste — das zur Laufzeit gezeichnete Fenster-Icon reicht nicht -->
     <ApplicationIcon>app.ico</ApplicationIcon>
   </PropertyGroup>
+
+  <!-- Standard-Client-ID nur einbetten, wenn beim Build übergeben (Release aus release.env) -->
+  <ItemGroup Condition="'$(DefaultClientId)' != ''">
+    <AssemblyMetadata Include="DefaultClientId" Value="$(DefaultClientId)" />
+  </ItemGroup>
 
   <ItemGroup>
     <!-- Kestrel & Co. für den internen Webserver (Widget + OAuth-Callback) -->

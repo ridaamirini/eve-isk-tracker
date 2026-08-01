@@ -33,7 +33,8 @@
   }
   .dot{width:6px;height:6px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent)}
   .title{font-size:10px;letter-spacing:.16em;color:var(--accent-200)}
-  .char{margin-left:auto;font-size:10px;color:var(--n400)}
+  .char{margin-left:auto;font-size:10px;color:var(--n400);display:flex;align-items:center;gap:6px}
+  .char img{width:18px;height:18px;border-radius:50%;border:1px solid var(--accent-800)}
   .row{display:flex;padding:12px 6px 0}
   .cell{flex:1;text-align:center}
   .label{font-size:9px;letter-spacing:.12em;color:var(--n400)}
@@ -76,17 +77,19 @@ const clock = h => {
   const p = n => String(n).padStart(2, '0');
   return `${p(Math.floor(s / 3600))}:${p(Math.floor(s / 60) % 60)}:${p(s % 60)}`;
 };
+// Labels [deutsch, englisch] — die Sprache kommt vom Server mit (Settings der App)
 const METRICS = {
-  time:     { label: 'SESSION',       render: d => d.active ? { text: clock(d.hours), cls: '', timer: true } : { text: '–', cls: '' } },
-  session:  { label: 'SESSION-ISK',   render: d => d.active ? { text: signed(d.delta), cls: d.delta > 0 ? 'pos' : d.delta < 0 ? 'neg' : '' } : { text: '–', cls: '' } },
-  rate:     { label: 'ISK/STUNDE',    render: d => d.active ? { text: signed(d.iskPerHour), cls: 'accent' } : { text: '–', cls: '' } },
-  bounties: { label: 'BOUNTIES CA.',  render: d => d.active && d.bounties > 0 ? { text: fmt(d.bounties), cls: 'pos' } : { text: '–', cls: '' } },
-  missions: { label: 'MISSIONEN CA.', render: d => d.active && d.missions > 0 ? { text: fmt(d.missions), cls: 'pos' } : { text: '–', cls: '' } },
-  kills:    { label: 'KILLS',         render: d => d.active ? { text: String(d.kills || 0), cls: '' } : { text: '–', cls: '' } },
-  destroyed:{ label: 'ZERSTÖRT',      render: d => d.active && d.destroyed > 0 ? { text: fmt(d.destroyed), cls: 'accent' } : { text: '–', cls: '' } },
-  mining:   { label: 'MINING-WERT',   render: d => d.active && d.mining > 0 ? { text: fmt(d.mining), cls: '' } : { text: '–', cls: '' } },
-  wallet:   { label: 'WALLET',        render: d => ({ text: fmt(d.balance), cls: '' }) },
+  time:     { label: ['SESSION', 'SESSION'],             render: d => d.active ? { text: clock(d.hours), cls: '', timer: true } : { text: '–', cls: '' } },
+  session:  { label: ['SESSION-ISK', 'SESSION ISK'],     render: d => d.active ? { text: signed(d.delta), cls: d.delta > 0 ? 'pos' : d.delta < 0 ? 'neg' : '' } : { text: '–', cls: '' } },
+  rate:     { label: ['ISK/STUNDE', 'ISK/HOUR'],         render: d => d.active ? { text: signed(d.iskPerHour), cls: 'accent' } : { text: '–', cls: '' } },
+  bounties: { label: ['BOUNTIES CA.', 'BOUNTIES EST.'],  render: d => d.active && d.bounties > 0 ? { text: fmt(d.bounties), cls: 'pos' } : { text: '–', cls: '' } },
+  missions: { label: ['MISSIONEN CA.', 'MISSIONS EST.'], render: d => d.active && d.missions > 0 ? { text: fmt(d.missions), cls: 'pos' } : { text: '–', cls: '' } },
+  kills:    { label: ['KILLS', 'KILLS'],                 render: d => d.active ? { text: String(d.kills || 0), cls: '' } : { text: '–', cls: '' } },
+  destroyed:{ label: ['ZERSTÖRT', 'DESTROYED'],          render: d => d.active && d.destroyed > 0 ? { text: fmt(d.destroyed), cls: 'accent' } : { text: '–', cls: '' } },
+  mining:   { label: ['MINING-WERT', 'MINING VALUE'],    render: d => d.active && d.mining > 0 ? { text: fmt(d.mining), cls: '' } : { text: '–', cls: '' } },
+  wallet:   { label: ['WALLET', 'WALLET'],               render: d => ({ text: fmt(d.balance), cls: '' }) },
 };
+const langIx = d => d.lang === 'en' ? 1 : 0;
 
 // Anzeige-Beruhigung für den Stream: Zahlen ändern sich nur, wenn CCP wirklich neue
 // Daten geliefert hat (Kontostand/Mining), nicht bei jedem Abfrage-Tick. ISK/h enthält
@@ -131,13 +134,19 @@ async function tick(){
 
     if (rateDue) { last.rate = METRICS.rate.render(d); last.rateAt = now; }
 
-    if (activeChanged || dataChanged || layoutChanged || rateDue) {
-      document.getElementById('char').textContent = d.name || '';
+    const lx = langIx(d);
+    const charChanged = d.showChar !== last.showChar;
+    if (activeChanged || dataChanged || layoutChanged || rateDue || charChanged || lx !== last.lx) {
+      last.lx = lx; last.showChar = d.showChar;
+      // Kopfzeile: Portrait + Name, per Opsec-Schalter in der App abschaltbar
+      document.getElementById('char').innerHTML = d.showChar
+        ? `<img src="https://images.evetech.net/characters/${d.charId}/portrait?size=64" alt="" onerror="this.remove()">${(d.name || '').replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}`
+        : '';
       document.getElementById('rows').innerHTML = chunkRows(list).map(row =>
         '<div class="row">' + row.map(k => {
           const v = k === 'rate' ? last.rate : METRICS[k].render(d);
           const id = v.timer ? ' id="tmr"' : '';
-          return `<div class="cell"><div class="label">${METRICS[k].label}</div><div class="value ${v.cls}"${id}>${v.text}</div></div>`;
+          return `<div class="cell"><div class="label">${METRICS[k].label[lx]}</div><div class="value ${v.cls}"${id}>${v.text}</div></div>`;
         }).join('<div class="sep"></div>') + '</div>').join('');
       last.active = d.active; last.balance = d.balance; last.delta = d.delta;
       last.mining = d.mining; last.bounties = d.bounties; last.missions = d.missions;

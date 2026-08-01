@@ -11,11 +11,28 @@ public static class Config
     public static string DataDir =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "EveIskTracker");
 
+    /// <summary>
+    /// Eingebaute Standard-App (PKCE, kein Secret — die Client-ID ist öffentlich und steht
+    /// ohnehin in jeder Login-URL). Sie steht bewusst NICHT im Quellcode, sondern wird beim
+    /// offiziellen Release-Build über -p:DefaultClientId=... (aus release.env, gitignoriert)
+    /// als Assembly-Metadatum eingebettet. Selbstgebaute Forks haben keine Standard-App und
+    /// fragen nach einer eigenen Client-ID.
+    /// </summary>
+    public static string DefaultClientId { get; } =
+        typeof(Config).Assembly
+            .GetCustomAttributes(typeof(System.Reflection.AssemblyMetadataAttribute), false)
+            .Cast<System.Reflection.AssemblyMetadataAttribute>()
+            .FirstOrDefault(a => a.Key == "DefaultClientId")?.Value ?? "";
+
+    /// <summary>Wirksame Client-ID: eigene, sonst die eingebaute.</summary>
     public static string ClientId
     {
-        get => Db.GetKv("client_id");
+        get { var own = Db.GetKv("client_id"); return string.IsNullOrWhiteSpace(own) ? DefaultClientId : own; }
         set => Db.SetKv("client_id", value?.Trim());
     }
+
+    /// <summary>Nur die selbst eingetragene ID (leer = Standard-App aktiv), für die Anzeige.</summary>
+    public static string ClientIdRaw => Db.GetKv("client_id") ?? "";
 
     /// <summary>Kontaktangabe für den User-Agent — CCP möchte wissen, wer da anfragt.</summary>
     public static string Contact
@@ -56,6 +73,20 @@ public static class Config
     {
         get => int.TryParse(Db.GetKv("rate_hold", "300"), out var v) ? Math.Clamp(v, 60, 3600) : 300;
         set => Db.SetKv("rate_hold", Math.Clamp(value, 60, 3600).ToString());
+    }
+
+    /// <summary>Zeigt das Widget Charakter-Portrait und -Namen im Kopf? (Opsec-Schalter)</summary>
+    public static bool OverlayShowChar
+    {
+        get => Db.GetKv("overlay_char", "1") != "0";
+        set => Db.SetKv("overlay_char", value ? "1" : "0");
+    }
+
+    /// <summary>Oberflächensprache: "de" oder "en".</summary>
+    public static string Lang
+    {
+        get => Db.GetKv("lang", "de") == "en" ? "en" : "de";
+        set => Db.SetKv("lang", value == "en" ? "en" : "de");
     }
 
     public static bool IsConfigured => !string.IsNullOrWhiteSpace(ClientId);
