@@ -104,7 +104,9 @@ async function tick(){
 }
 
 tick();
-setInterval(tick, 15000);
+// 5s: fragt nur die lokale App, kein Verkehr zu CCP — neue Werte erscheinen
+// damit binnen Sekunden, sobald der Sync sie hat
+setInterval(tick, 5000);
 </script>
 </body>
 </html>

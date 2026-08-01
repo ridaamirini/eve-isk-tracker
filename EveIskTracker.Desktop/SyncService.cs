@@ -44,7 +44,10 @@ public class SyncService : BackgroundService
         {
             try { await RunOnce(stop); }
             catch (Exception ex) { _log.LogError(ex, "Sync-Durchlauf fehlgeschlagen"); LastMessage = "Fehler: " + ex.Message; }
-            await Task.Delay(TimeSpan.FromSeconds(60), stop);
+            // Kurzer Prüftakt, damit frische CCP-Daten zeitnah abgeholt werden.
+            // Die eigentlichen Abrufintervalle je Ressource (Plan oben) bleiben unberührt —
+            // zwischen zwei echten Abrufen passiert hier nichts außer einem Zeitvergleich.
+            await Task.Delay(TimeSpan.FromSeconds(20), stop);
         }
     }
 
