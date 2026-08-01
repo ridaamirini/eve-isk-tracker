@@ -1,0 +1,14 @@
+# Build-Ausgaben
+bin/
+obj/
+release/
+
+# Nutzerspezifisch / IDE
+*.user
+.vs/
+.idea/
+
+# Lokale Daten (liegen ohnehin unter %LOCALAPPDATA%, nur zur Sicherheit)
+*.db
+*.db-wal
+*.db-shm

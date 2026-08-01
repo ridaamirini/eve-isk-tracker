@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PULSAR — EVE ISK Tracker</title>
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- ================= Sidebar ================= -->
+  <aside class="sidebar">
+    <div class="side-logo">
+      <div class="logo-badge"><i class="ph-fill ph-rocket-launch"></i></div>
+      <div>
+        <div class="logo-name">PULSAR</div>
+        <div class="logo-sub">DEEP SPACE TELEMETRY</div>
+      </div>
+    </div>
+    <div class="side-rule"></div>
+    <nav class="side-nav" id="sideNav">
+      <div class="nav-item on" data-screen="dash"><i class="ph ph-squares-four"></i>Dashboard</div>
+      <div class="nav-item" data-screen="wallet"><i class="ph ph-wallet"></i>Wallet</div>
+      <div class="nav-item" data-screen="reports"><i class="ph ph-chart-bar"></i>Reports</div>
+      <div class="nav-item" data-screen="overlay"><i class="ph ph-broadcast"></i>Stream Overlay</div>
+      <div class="nav-item" data-screen="settings"><i class="ph ph-gear-six"></i>Settings</div>
+    </nav>
+    <div class="side-bottom">
+      <div class="char-wrap">
+        <div class="char-pop hidden" id="charPop"></div>
+        <div class="char-box" id="charBox">
+          <div class="char-avatar" id="charAvatar">–</div>
+          <div class="char-meta">
+            <div class="char-name" id="charName">Kein Charakter</div>
+            <div class="char-sub" id="charSub">bitte anmelden</div>
+          </div>
+          <i class="ph ph-caret-up-down"></i>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ================= Main ================= -->
+  <main class="main">
+
+    <!-- ========== Dashboard ========== -->
+    <div class="screen" id="screen-dash">
+      <div class="page-head">
+        <h1>Dashboard</h1>
+        <span class="head-note" id="dashNote">–</span>
+        <span class="head-note" id="updNote" style="margin-left:auto"></span>
+        <span class="tag tag-accent" id="liveTag">LIVE · ESI connected</span>
+        <button class="btn btn-primary" id="btnSession">Session starten</button>
+      </div>
+      <div class="head-rule"></div>
+      <div id="dashBanners"></div>
+
+      <div class="grid4">
+        <div class="card stat">
+          <div class="stat-top"><span class="stat-label">WALLET BALANCE</span><i class="ph ph-wallet"></i></div>
+          <div class="stat-value" id="stBalance">–</div>
+          <div class="stat-sub" id="stBalanceSub">–</div>
+        </div>
+        <div class="card stat">
+          <div class="stat-top"><span class="stat-label">ISK / HOUR</span><i class="ph ph-timer"></i></div>
+          <div class="stat-value" id="stRate">–</div>
+          <div class="stat-sub" id="stRateSub">Ø diese Session</div>
+        </div>
+        <div class="card stat">
+          <div class="stat-top"><span class="stat-label">SESSION ISK</span><i class="ph ph-lightning"></i></div>
+          <div class="stat-value" id="stSession">–</div>
+          <div class="stat-sub" id="stSessionSub">keine Session</div>
+        </div>
+        <div class="card stat">
+          <div class="stat-top"><span class="stat-label">MINING YIELD</span><i class="ph ph-cube"></i></div>
+          <div class="stat-value" id="stMining">–</div>
+          <div class="stat-sub" id="stMiningSub">heute · Marktwert</div>
+        </div>
+      </div>
+
+      <div class="grid-main">
+        <div class="card pad">
+          <div class="row" style="margin-bottom:12px">
+            <span class="kicker" id="walletChartTitle">WALLET · 24H</span>
+            <div class="seg" style="margin-left:auto" id="dashRange">
+              <span class="seg-opt on" data-r="24h">24H</span><span class="seg-opt" data-r="7d">7D</span><span class="seg-opt" data-r="30d">30D</span>
+            </div>
+          </div>
+          <div id="walletChart" class="chartbox"></div>
+          <div class="chart-foot" id="walletChartFoot"></div>
+        </div>
+
+        <div class="card pad">
+          <div class="row" style="margin-bottom:10px"><span class="kicker">RECENT ACTIVITY</span><span class="head-note" style="margin-left:auto" id="recentNote"></span></div>
+          <div class="list" id="recentList"><div class="empty">Noch keine Buchungen.</div></div>
+        </div>
+      </div>
+
+      <div class="grid2">
+        <div class="card pad">
+          <span class="kicker">MINING · HEUTE</span>
+          <div class="ores" id="oreList"><div class="empty">Heute noch nichts geschürft.</div></div>
+        </div>
+        <div class="card pad">
+          <span class="kicker">INCOME SPLIT · 7D</span>
+          <div class="split" id="splitBox"><div class="empty">Noch keine Einnahmen erfasst.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== Wallet ========== -->
+    <div class="screen hidden" id="screen-wallet">
+      <div class="page-head">
+        <h1>Wallet</h1>
+        <span class="head-note">Journal · Hauptwallet</span>
+        <div style="margin-left:auto;display:flex;gap:8px">
+          <a class="btn btn-secondary" id="btnCsv" href="#"><i class="ph ph-export"></i> Export CSV</a>
+          <button class="btn btn-primary" id="btnRefresh"><i class="ph ph-arrows-clockwise"></i> Refresh</button>
+        </div>
+      </div>
+      <div class="head-rule"></div>
+
+      <div class="grid3">
+        <div class="card stat"><span class="stat-label">BALANCE</span><div class="stat-value sm" id="wBalance">–</div></div>
+        <div class="card stat"><span class="stat-label">IN · 24H</span><div class="stat-value sm pos" id="wIn">–</div></div>
+        <div class="card stat"><span class="stat-label">OUT · 24H</span><div class="stat-value sm dim" id="wOut">–</div></div>
+      </div>
+
+      <div class="card pad" style="margin-top:14px">
+        <span class="kicker">BALANCE · 30D</span>
+        <div id="walletChart30" class="chartbox" style="margin-top:10px"></div>
+      </div>
+
+      <div class="card" style="margin-top:14px;padding:4px 0;overflow:hidden">
+        <table class="table">
+          <thead><tr><th>Zeit</th><th>Typ</th><th>Beschreibung</th><th class="num">Betrag</th><th class="num">Kontostand</th></tr></thead>
+          <tbody id="journalRows"><tr><td colspan="5" class="empty">Noch keine Buchungen.</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ========== Reports (Module) ========== -->
+    <div class="screen hidden" id="screen-reports">
+      <div class="page-head">
+        <h1>Reports</h1>
+        <span class="head-note">Handel · Ratting · Mining · Industrie</span>
+        <div class="seg" style="margin-left:auto" id="repRange">
+          <span class="seg-opt" data-r="today">Heute</span><span class="seg-opt" data-r="7d">7T</span><span class="seg-opt on" data-r="30d">30T</span><span class="seg-opt" data-r="90d">90T</span><span class="seg-opt" data-r="all">Alles</span>
+        </div>
+      </div>
+      <div class="head-rule"></div>
+
+      <div class="seg" id="tabbar" style="margin-bottom:16px">
+        <span class="seg-opt on" data-tab="trading">Handel</span>
+        <span class="seg-opt" data-tab="ratting">Ratting</span>
+        <span class="seg-opt" data-tab="mining">Mining</span>
+        <span class="seg-opt" data-tab="industry">Industrie</span>
+        <span class="seg-opt" data-tab="sessions">Sessions</span>
+      </div>
+      <div id="tab-trading" class="tabpanel"></div>
+      <div id="tab-ratting" class="tabpanel hidden"></div>
+      <div id="tab-mining" class="tabpanel hidden"></div>
+      <div id="tab-industry" class="tabpanel hidden"></div>
+      <div id="tab-sessions" class="tabpanel hidden"></div>
+    </div>
+
+    <!-- ========== Stream Overlay ========== -->
+    <div class="screen hidden" id="screen-overlay">
+      <div class="page-head">
+        <h1>Stream Overlay</h1>
+        <span class="head-note">Browser-Quelle für Streamlabs/OBS · 420 × 128 px</span>
+        <button class="btn btn-primary" style="margin-left:auto" id="btnCopyUrl"><i class="ph ph-copy"></i> Copy source URL</button>
+      </div>
+      <div class="head-rule"></div>
+
+      <div class="grid-main">
+        <div class="card pad">
+          <span class="kicker">PREVIEW · IN SCENE</span>
+          <div class="scene" id="sceneBox">
+            <div class="scene-note">GAME CAPTURE 1920×1080</div>
+            <div class="pulsar-widget" id="pvWidget">
+              <div class="pw-head">
+                <span class="pw-dot"></span>
+                <span class="pw-title">PULSAR LIVE</span>
+                <span class="pw-char" id="pvChar">–</span>
+              </div>
+              <div class="pw-row">
+                <div class="pw-cell"><div class="pw-label">WALLET</div><div class="pw-value" id="pvWallet">–</div></div>
+                <div class="pw-sep"></div>
+                <div class="pw-cell"><div class="pw-label">ISK/H</div><div class="pw-value accent" id="pvRate">–</div></div>
+                <div class="pw-sep"></div>
+                <div class="pw-cell"><div class="pw-label">SESSION</div><div class="pw-value" id="pvSession">–</div></div>
+                <div class="pw-sep"></div>
+                <div class="pw-cell"><div class="pw-label">MINING</div><div class="pw-value" id="pvMining">–</div></div>
+              </div>
+            </div>
+          </div>
+          <div class="row" style="margin-top:12px">
+            <button class="btn btn-secondary" id="btnScene" style="font-size:12px">Scene preview</button>
+            <button class="btn btn-ghost" id="btnChecker" style="font-size:12px">Transparent</button>
+            <span class="head-note" style="margin-left:auto;align-self:center">Hintergrund ist in OBS voll transparent</span>
+          </div>
+        </div>
+
+        <div class="card pad">
+          <span class="kicker">WIDGET CONFIG</span>
+          <div class="fields">
+            <div class="field"><label>Angezeigte Werte</label>
+              <div class="tagrow">
+                <span class="tag tag-accent">Wallet</span><span class="tag tag-accent">ISK/h</span><span class="tag tag-accent">Session</span><span class="tag tag-accent">Mining</span>
+              </div>
+            </div>
+            <div class="field"><label>Aktualisierung</label>
+              <div class="head-note">alle 15 s (Kontostand von CCP alle 2 min neu)</div>
+            </div>
+            <div class="field"><label>Source URL</label>
+              <input class="input" id="srcUrl" readonly value="–">
+            </div>
+            <div class="field"><label>Alternative: Textdatei für Textquellen</label>
+              <input class="input" id="overlayTextPath" placeholder="C:\Users\...\isk.txt">
+              <button class="btn btn-secondary" id="btnSaveTxt" style="margin-top:8px;font-size:12px">Pfad speichern</button>
+            </div>
+            <div class="head-note" style="line-height:1.5">In Streamlabs als Browser-Quelle mit 420×128 anlegen. Das Widget zeigt ohne laufende Session nur den Kontostand.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== Settings ========== -->
+    <div class="screen hidden" id="screen-settings" style="max-width:760px">
+      <div class="page-head"><h1>Settings</h1></div>
+      <div class="head-rule"></div>
+
+      <div class="card pad" style="margin-bottom:14px">
+        <span class="kicker">ESI CONNECTION</span>
+        <div id="charAdmin" class="fields"></div>
+        <div style="margin-top:12px;display:flex;gap:8px">
+          <a class="btn btn-secondary" href="/api/login" id="btnAddChar" style="font-size:12px"><i class="ph ph-plus"></i> Charakter anmelden</a>
+          <button class="btn btn-primary" id="btnSync" style="font-size:12px"><i class="ph ph-arrows-clockwise"></i> Jetzt abgleichen</button>
+          <span class="head-note" style="align-self:center" id="syncState">–</span>
+        </div>
+      </div>
+
+      <div class="card pad" style="margin-bottom:14px">
+        <span class="kicker">APP REGISTRATION</span>
+        <div class="head-note" style="margin-top:8px;line-height:1.55">
+          Einmalig nötig: eigene Anwendung auf
+          <a href="https://developers.eveonline.com/applications" target="_blank" rel="noopener">developers.eveonline.com</a>
+          anlegen (Connection Type „Authentication &amp; API Access").
+          Callback URL exakt: <code id="redirectUri">–</code>
+          <button class="btn btn-ghost" data-copy="redirectUri" style="font-size:11px;padding:2px 6px">kopieren</button>
+          <div class="tagrow" id="scopeList" style="margin-top:8px"></div>
+        </div>
+        <div class="fields">
+          <div class="field"><label>Client ID</label><input class="input" id="clientId" autocomplete="off" placeholder="z.B. 1a2b3c4d5e6f..."></div>
+          <div class="field"><label>Kontakt (E-Mail oder Charaktername)</label><input class="input" id="contact" autocomplete="off" placeholder="deine@mail.de"></div>
+          <div><button class="btn btn-primary" id="btnSaveConfig">Speichern</button></div>
+        </div>
+        <div class="head-note" style="margin-top:10px">
+          Kein Passwort, kein Client-Secret: der Login läuft über CCPs eigene Seite,
+          hier liegt nur ein Windows-verschlüsseltes Zugriffstoken.
+        </div>
+      </div>
+
+      <div class="card pad">
+        <span class="kicker">DATA</span>
+        <div class="head-note" style="margin-top:8px">Alle Daten lokal in <code id="dbPath">–</code></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

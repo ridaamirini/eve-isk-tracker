@@ -1,0 +1,176 @@
+using EveIskTracker;
+
+/// <summary>
+/// Legt einen klar erkennbaren Demo-Charakter mit erfundenen Daten an, damit sich die
+/// Oberfläche ohne echten EVE-Login begutachten lässt. "unseed" räumt restlos auf.
+/// </summary>
+public static class Seed
+{
+    public const long DemoId = 90000001;
+
+    public static void Run(bool create)
+    {
+        Wipe();
+        if (!create) { Console.WriteLine("Demo-Daten entfernt."); return; }
+
+        var now = Util.UtcNow;
+
+        Db.Run(@"INSERT INTO characters(character_id,name,added_utc,last_sync_utc,last_balance,enabled)
+                 VALUES($c,'DEMO Pilot',$t,$t,$b,1)
+                 ON CONFLICT(character_id) DO UPDATE SET name='DEMO Pilot', last_balance=$b",
+            ("$c", DemoId), ("$t", Util.NowIso()), ("$b", 42_000_000_000d));
+
+        // --- Namen und Preise ---
+        var items = new (long Id, string Name, double Price)[]
+        {
+            (34,   "Tritanium",                     6.2),
+            (35,   "Pyerite",                      12.5),
+            (1230, "Veldspar",                      4.8),
+            (17470,"Compressed Veldspar",         480.0),
+            (587,  "Rifter",                  1_150_000),
+            (24698,"Drake",                  62_000_000),
+            (2048, "Damage Control II",        720_000),
+            (12058,"Warp Disruptor II",      1_240_000),
+            (30000142, "Jita", 0),
+        };
+        foreach (var (id, name, price) in items)
+        {
+            Db.Run("INSERT INTO names(id,name,category) VALUES($i,$n,'inventory_type') ON CONFLICT(id) DO UPDATE SET name=$n",
+                   ("$i", id), ("$n", name));
+            if (price > 0)
+                Db.Run(@"INSERT INTO prices(type_id,average_price,adjusted_price,updated_utc) VALUES($t,$p,$p,$u)
+                         ON CONFLICT(type_id) DO UPDATE SET average_price=$p", ("$t", id), ("$p", price), ("$u", Util.NowIso()));
+        }
+
+        // --- Handel: Käufe und Verkäufe über die letzten Wochen ---
+        long tx = 900000;
+        void Tx(double daysAgo, long typeId, double price, long qty, bool isBuy) =>
+            Db.Run(@"INSERT INTO transactions(character_id,transaction_id,date_utc,type_id,location_id,unit_price,quantity,is_buy,client_id,journal_ref_id)
+                     VALUES($c,$t,$d,$ty,60003760,$u,$q,$b,0,0) ON CONFLICT DO NOTHING",
+                ("$c", DemoId), ("$t", tx++), ("$d", Util.ToIso(now.AddDays(-daysAgo))),
+                ("$ty", typeId), ("$u", price), ("$q", qty), ("$b", isBuy ? 1 : 0));
+
+        Tx(25, 24698, 55_000_000, 4, true);
+        Tx(20, 24698, 64_500_000, 3, false);
+        Tx(18, 2048, 610_000, 200, true);
+        Tx(12, 2048, 745_000, 180, false);
+        Tx(15, 12058, 1_050_000, 150, true);
+        Tx(9, 12058, 1_310_000, 120, false);
+        Tx(8, 587, 900_000, 40, true);
+        Tx(4, 587, 1_190_000, 35, false);
+        Tx(6, 17470, 410, 12_000, true);
+        Tx(2, 17470, 505, 10_500, false);
+        Tx(3, 35, 15.5, 400_000, false);       // ohne bekannten Einkauf – zeigt den Hinweis
+
+        // --- Journal ---
+        long jr = 800000;
+        void J(double daysAgo, string refType, double amount) =>
+            Db.Run(@"INSERT INTO journal(character_id,entry_id,date_utc,ref_type,amount,balance)
+                     VALUES($c,$i,$d,$r,$a,0) ON CONFLICT DO NOTHING",
+                ("$c", DemoId), ("$i", jr++), ("$d", Util.ToIso(now.AddDays(-daysAgo))),
+                ("$r", refType), ("$a", amount));
+
+        var rnd = new Random(42);
+        for (var d = 0; d < 28; d++)
+        {
+            J(d + 0.4, "bounty_prizes", 18_000_000 + rnd.Next(0, 14_000_000));
+            if (d % 3 == 0) J(d + 0.5, "ess_escrow_transfer", 25_000_000 + rnd.Next(0, 20_000_000));
+            if (d % 4 == 0) J(d + 0.6, "agent_mission_reward", 2_400_000 + rnd.Next(0, 3_000_000));
+            if (d % 7 == 0) J(d + 0.7, "insurance", 8_900_000);
+        }
+        J(20, "brokers_fee", -3_480_000);
+        J(12, "brokers_fee", -1_260_000);
+        J(9, "transaction_tax", -6_140_000);
+        J(4, "transaction_tax", -2_080_000);
+        J(2, "brokers_fee", -930_000);
+
+        // Markterlöse, damit der Einnahmen-Donut ein Trading-Segment hat
+        for (var d = 0; d < 28; d += 2)
+        {
+            J(d + 0.3, "market_transaction", 22_000_000 + rnd.Next(0, 40_000_000));
+            if (d % 6 == 0) J(d + 0.35, "market_transaction", -(4_000_000 + rnd.Next(0, 9_000_000)));
+        }
+
+        // Laufende Kontostände nachtragen: vom Endstand rückwärts durch alle Buchungen,
+        // damit die Verlaufskurve im Wallet-Chart echt aussieht.
+        var entries = new List<(long Id, double Amount)>();
+        using (var c = Db.Open())
+        using (var cmd = Db.Cmd(c, "SELECT entry_id, COALESCE(amount,0) FROM journal WHERE character_id=$c ORDER BY date_utc DESC, entry_id DESC", ("$c", DemoId)))
+        using (var rd = cmd.ExecuteReader())
+            while (rd.Read()) entries.Add((rd.GetInt64(0), rd.GetDouble(1)));
+
+        var runBal = 42_000_000_000d;
+        using (var c = Db.Open())
+        using (var dbtx = c.BeginTransaction())
+        {
+            using var up = c.CreateCommand();
+            up.CommandText = "UPDATE journal SET balance=$b WHERE character_id=$ch AND entry_id=$i";
+            var pb = up.Parameters.Add("$b", Microsoft.Data.Sqlite.SqliteType.Real);
+            var pc = up.Parameters.Add("$ch", Microsoft.Data.Sqlite.SqliteType.Integer);
+            var pi = up.Parameters.Add("$i", Microsoft.Data.Sqlite.SqliteType.Integer);
+            foreach (var (id, amount) in entries)
+            {
+                pb.Value = runBal; pc.Value = DemoId; pi.Value = id;
+                up.ExecuteNonQuery();
+                runBal -= amount;   // Stand VOR dieser Buchung, für die nächstältere
+            }
+            dbtx.Commit();
+        }
+
+        // --- Mining ---
+        for (var d = 0; d < 14; d++)
+        {
+            var day = now.AddDays(-d).ToString("yyyy-MM-dd");
+            Db.Run(@"INSERT INTO mining(character_id,date_day,solar_system_id,type_id,quantity) VALUES($c,$d,30000142,1230,$q)
+                     ON CONFLICT(character_id,date_day,solar_system_id,type_id) DO UPDATE SET quantity=$q",
+                ("$c", DemoId), ("$d", day), ("$q", 120_000 + rnd.Next(0, 90_000)));
+            Db.Run(@"INSERT INTO mining(character_id,date_day,solar_system_id,type_id,quantity) VALUES($c,$d,30000142,17470,$q)
+                     ON CONFLICT(character_id,date_day,solar_system_id,type_id) DO UPDATE SET quantity=$q",
+                ("$c", DemoId), ("$d", day), ("$q", 900 + rnd.Next(0, 700)));
+        }
+
+        // --- Industrie ---
+        for (var i = 0; i < 6; i++)
+            Db.Run(@"INSERT INTO industry_jobs(character_id,job_id,activity_id,blueprint_type_id,product_type_id,runs,cost,status,start_utc,end_utc)
+                     VALUES($c,$j,1,587,587,$r,$co,'delivered',$s,$e) ON CONFLICT DO NOTHING",
+                ("$c", DemoId), ("$j", 700000 + i), ("$r", 20 + i * 5),
+                ("$co", 4_200_000 + i * 800_000),
+                ("$s", Util.ToIso(now.AddDays(-(i * 3 + 4)))), ("$e", Util.ToIso(now.AddDays(-(i * 3 + 2)))));
+
+        // --- laufende Session seit 3,5 Stunden ---
+        Db.Run(@"INSERT INTO sessions(character_id,label,started_utc,start_balance)
+                 VALUES($c,'Ratting Delve',$t,$b)",
+            ("$c", DemoId), ("$t", Util.ToIso(now.AddHours(-3.5))), ("$b", 41_580_000_000d));
+
+        var sid = Convert.ToInt64(Db.Scalar("SELECT MAX(id) FROM sessions WHERE character_id=$c", ("$c", DemoId)));
+        for (var m = 0; m <= 210; m += 15)
+            Db.Run("INSERT INTO session_samples(session_id,ts_utc,balance) VALUES($s,$t,$b) ON CONFLICT DO NOTHING",
+                ("$s", sid), ("$t", Util.ToIso(now.AddHours(-3.5).AddMinutes(m))),
+                ("$b", 41_580_000_000 + m * 2_000_000));
+
+        Db.Run(@"INSERT INTO mining_delta(character_id,observed_utc,date_day,solar_system_id,type_id,quantity)
+                 VALUES($c,$o,$d,30000142,1230,38000)",
+            ("$c", DemoId), ("$o", Util.ToIso(now.AddHours(-2))), ("$d", now.ToString("yyyy-MM-dd")));
+
+        // --- abgeschlossene Sessions ---
+        for (var i = 1; i <= 5; i++)
+        {
+            var start = now.AddDays(-i * 2).AddHours(-4);
+            Db.Run(@"INSERT INTO sessions(character_id,label,started_utc,ended_utc,start_balance,end_balance)
+                     VALUES($c,$l,$s,$e,$sb,$eb)",
+                ("$c", DemoId), ("$l", i % 2 == 0 ? "Mining Nacht" : "Ratting Delve"),
+                ("$s", Util.ToIso(start)), ("$e", Util.ToIso(start.AddHours(3 + i * 0.5))),
+                ("$sb", 30_000_000_000.0), ("$eb", 30_000_000_000.0 + i * 340_000_000));
+        }
+
+        Console.WriteLine("Demo-Charakter 'DEMO Pilot' angelegt (ID " + DemoId + ").");
+    }
+
+    private static void Wipe()
+    {
+        foreach (var t in new[] { "transactions", "journal", "mining", "mining_delta", "industry_jobs", "market_orders", "characters", "tokens", "sync_state" })
+            Db.Run($"DELETE FROM {t} WHERE character_id=$c", ("$c", DemoId));
+        Db.Run("DELETE FROM session_samples WHERE session_id IN (SELECT id FROM sessions WHERE character_id=$c)", ("$c", DemoId));
+        Db.Run("DELETE FROM sessions WHERE character_id=$c", ("$c", DemoId));
+    }
+}

@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net6.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>EveIskTracker</RootNamespace>
+    <AssemblyName>EveIskTracker</AssemblyName>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Kestrel & Co. für den internen Webserver (Widget + OAuth-Callback) -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="6.0.25" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="6.0.0" />
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2210.55" />
+  </ItemGroup>
+
+  <!-- Oberfläche fest in die EXE einbetten -->
+  <ItemGroup>
+    <EmbeddedResource Include="wwwroot\**" />
+  </ItemGroup>
+
+</Project>
