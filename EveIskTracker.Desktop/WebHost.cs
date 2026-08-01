@@ -72,6 +72,7 @@ WHERE last_error IS NOT NULL
                 clientId = Config.ClientId,
                 contact = Config.Contact,
                 overlayTextPath = Config.OverlayTextPath,
+                overlayMetrics = Config.OverlayMetrics,
                 redirectUri = Sso.RedirectUri,
                 scopes = Sso.Scopes,
                 characters = chars,
@@ -89,6 +90,7 @@ WHERE last_error IS NOT NULL
             if (form.TryGetValue("clientId", out var cid) && !string.IsNullOrWhiteSpace(cid)) Config.ClientId = cid;
             if (form.TryGetValue("contact", out var ct)) Config.Contact = ct;
             if (form.TryGetValue("overlayTextPath", out var op)) Config.OverlayTextPath = op;
+            if (form.TryGetValue("overlayMetrics", out var om)) Config.OverlayMetrics = om;
             return Results.Ok(new { ok = true });
         });
 
@@ -277,6 +279,9 @@ ORDER BY started_utc DESC LIMIT 50", ("$c", charId));
                 iskPerHour = st.IskPerHour,
                 mining = st.MiningValue,
                 hours = st.Hours,
+                // Auswahl der Kacheln wandert mit — so greifen Änderungen im Widget
+                // binnen Sekunden, ohne die Browser-Quelle anzufassen
+                metrics = Config.OverlayMetrics.Split(','),
             });
         });
 

@@ -449,15 +449,53 @@ async function loadSessionHistory() {
 
 // ---------- Overlay-Screen ----------
 
+const METRIC_DEFS = [
+  { key: 'wallet', name: 'Wallet', label: 'WALLET' },
+  { key: 'rate', name: 'ISK/h', label: 'ISK/H' },
+  { key: 'session', name: 'Session', label: 'SESSION' },
+  { key: 'mining', name: 'Mining', label: 'MINING' },
+];
+const activeMetrics = () =>
+  ((S.status && S.status.overlayMetrics) || 'wallet,rate,session,mining').split(',').filter(Boolean);
+
 async function loadOverlayScreen() {
   if (!S.charId) return;
   const d = await api(`/api/overlay-data?charId=${S.charId}`);
   $('pvChar').textContent = d.name || '–';
-  $('pvWallet').textContent = fmtIsk(d.balance);
-  $('pvRate').textContent = d.active ? signed(d.iskPerHour) : '–';
-  $('pvSession').textContent = d.active ? signed(d.delta) : '–';
-  $('pvMining').textContent = d.active && d.mining > 0 ? fmtIsk(d.mining) : '–';
+
+  const act = activeMetrics();
+  const cell = k => {
+    let text = '–', cls = '';
+    if (k === 'wallet') text = fmtIsk(d.balance);
+    if (k === 'rate' && d.active) { text = signed(d.iskPerHour); cls = 'accent'; }
+    if (k === 'session' && d.active) { text = signed(d.delta); cls = d.delta > 0 ? 'pos' : d.delta < 0 ? 'neg' : ''; }
+    if (k === 'mining' && d.active && d.mining > 0) text = fmtIsk(d.mining);
+    const def = METRIC_DEFS.find(m => m.key === k);
+    return `<div class="pw-cell"><div class="pw-label">${def.label}</div><div class="pw-value ${cls}">${text}</div></div>`;
+  };
+  $('pvRow').innerHTML = act.map(cell).join('<div class="pw-sep"></div>');
+
+  $('metricToggles').innerHTML = METRIC_DEFS.map(m =>
+    `<span class="tag ${act.includes(m.key) ? 'tag-accent' : 'tag-off'} click" data-metric="${m.key}">${m.name}</span>`).join('');
 }
+
+$('metricToggles').addEventListener('click', async e => {
+  const t = e.target.closest('[data-metric]');
+  if (!t) return;
+  const act = activeMetrics();
+  const key = t.dataset.metric;
+  const next = act.includes(key) ? act.filter(k => k !== key) : [...act, key];
+  if (!next.length) { alert('Mindestens ein Wert muss angezeigt bleiben.'); return; }
+  try {
+    await api('/api/config', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ overlayMetrics: next.join(',') }),
+    });
+    // Reihenfolge wie der Server normieren (feste Kachel-Reihenfolge)
+    S.status.overlayMetrics = METRIC_DEFS.map(m => m.key).filter(k => next.includes(k)).join(',');
+    loadOverlayScreen();
+  } catch (err) { alert('Speichern fehlgeschlagen: ' + err.message); }
+});
 
 // ---------- Navigation & Ereignisse ----------
 

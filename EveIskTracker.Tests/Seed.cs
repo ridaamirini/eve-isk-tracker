@@ -15,9 +15,11 @@ public static class Seed
 
         var now = Util.UtcNow;
 
+        // enabled=0: der Hintergrund-Sync lässt den Demo-Charakter in Ruhe —
+        // er hat keinen Login, jeder Versuch würde nur Fehlermeldungen erzeugen
         Db.Run(@"INSERT INTO characters(character_id,name,added_utc,last_sync_utc,last_balance,enabled)
-                 VALUES($c,'DEMO Pilot',$t,$t,$b,1)
-                 ON CONFLICT(character_id) DO UPDATE SET name='DEMO Pilot', last_balance=$b",
+                 VALUES($c,'DEMO Pilot',$t,$t,$b,0)
+                 ON CONFLICT(character_id) DO UPDATE SET name='DEMO Pilot', last_balance=$b, enabled=0",
             ("$c", DemoId), ("$t", Util.NowIso()), ("$b", 42_000_000_000d));
 
         // --- Namen und Preise ---

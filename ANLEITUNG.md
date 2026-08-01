@@ -1,6 +1,6 @@
-# EVE ISK Tracker — Desktop (PULSAR)
+# EVE ISK Tracker
 
-Windows-Desktop-App im **PULSAR-Design** (Deep Space Telemetry), die dein EVE-Wallet über
+Windows-Desktop-App im dunklen Space-Design, die dein EVE-Wallet über
 CCPs offizielle Schnittstelle (ESI) ausliest, die Daten dauerhaft lokal sammelt und daraus
 Auswertungen rechnet. Navigation links: **Dashboard** (Kennzahlen, Wallet-Verlauf, Recent
 Activity, Mining, Einnahmen-Donut), **Wallet** (Journal, 30-Tage-Kurve, CSV-Export),
@@ -8,10 +8,12 @@ Activity, Mining, Einnahmen-Donut), **Wallet** (Journal, 30-Tage-Kurve, CSV-Expo
 (Widget-Vorschau und -Konfiguration), **Settings** (ESI-Verbindung, App-Registrierung).
 Charakterwechsel unten links in der Sidebar.
 
-**Das Stream-Widget ist jetzt 420 × 128 px** („PULSAR LIVE": Wallet · ISK/h · Session ·
-Mining) und wird in Streamlabs/OBS als Browser-Quelle mit genau dieser Größe angelegt —
-frei positionierbar, Hintergrund transparent. Ohne laufende Session zeigt es nur den
-Kontostand. Session-Start/-Stopp: Knopf oben rechts im Dashboard.
+**Das Stream-Widget ist 420 × 128 px** („ISK TRACKER · LIVE") und wird in Streamlabs/OBS
+als Browser-Quelle mit genau dieser Größe angelegt — frei positionierbar, Hintergrund
+transparent. Welche Werte es zeigt (Wallet, ISK/h, Session, Mining), wählst du auf der
+Stream-Overlay-Seite per Klick an und ab; Änderungen übernimmt das Widget binnen Sekunden
+ohne Anfassen der Browser-Quelle. Ohne laufende Session zeigt es nur den Kontostand.
+Session-Start/-Stopp: Knopf oben rechts im Dashboard.
 
 **Die Anwendung ist `release\EveIskTracker.exe` — eine Datei, keine Installation.**
 Beim Doppelklick öffnet sich ein normales Programmfenster.
@@ -89,7 +91,7 @@ im Hintergrund aktuell.
 
 ---
 
-## Das Streamlabs-Widget (PULSAR LIVE)
+## Das Streamlabs-Widget
 
 1. In der App: **Stream Overlay** → **Copy source URL** (oder Tray-Menü → Widget-URL kopieren)
 2. Streamlabs → Szene *Live* → **Quellen** → **+** → **Browserquelle**

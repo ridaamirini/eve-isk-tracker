@@ -3,12 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>PULSAR — EVE ISK Tracker</title>
+  <title>EVE ISK Tracker</title>
   <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
   <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
   <link rel="stylesheet" href="app.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%230a0f16' stroke='%234da3ff' stroke-width='2'/%3E%3Ctext x='16' y='22' text-anchor='middle' font-family='Segoe UI' font-weight='bold' font-size='16' fill='%234da3ff'%3EƵ%3C/text%3E%3C/svg%3E">
 </head>
 <body>
 
@@ -17,10 +18,10 @@
   <!-- ================= Sidebar ================= -->
   <aside class="sidebar">
     <div class="side-logo">
-      <div class="logo-badge"><i class="ph-fill ph-rocket-launch"></i></div>
+      <div class="logo-badge"><span class="logo-isk">Ƶ</span></div>
       <div>
-        <div class="logo-name">PULSAR</div>
-        <div class="logo-sub">DEEP SPACE TELEMETRY</div>
+        <div class="logo-name">EVE ISK Tracker</div>
+        <div class="logo-sub">ISK TELEMETRY</div>
       </div>
     </div>
     <div class="side-rule"></div>
@@ -187,18 +188,10 @@
             <div class="pulsar-widget" id="pvWidget">
               <div class="pw-head">
                 <span class="pw-dot"></span>
-                <span class="pw-title">PULSAR LIVE</span>
+                <span class="pw-title">ISK TRACKER · LIVE</span>
                 <span class="pw-char" id="pvChar">–</span>
               </div>
-              <div class="pw-row">
-                <div class="pw-cell"><div class="pw-label">WALLET</div><div class="pw-value" id="pvWallet">–</div></div>
-                <div class="pw-sep"></div>
-                <div class="pw-cell"><div class="pw-label">ISK/H</div><div class="pw-value accent" id="pvRate">–</div></div>
-                <div class="pw-sep"></div>
-                <div class="pw-cell"><div class="pw-label">SESSION</div><div class="pw-value" id="pvSession">–</div></div>
-                <div class="pw-sep"></div>
-                <div class="pw-cell"><div class="pw-label">MINING</div><div class="pw-value" id="pvMining">–</div></div>
-              </div>
+              <div class="pw-row" id="pvRow"></div>
             </div>
           </div>
           <div class="row" style="margin-top:12px">
@@ -211,10 +204,8 @@
         <div class="card pad">
           <span class="kicker">WIDGET CONFIG</span>
           <div class="fields">
-            <div class="field"><label>Angezeigte Werte</label>
-              <div class="tagrow">
-                <span class="tag tag-accent">Wallet</span><span class="tag tag-accent">ISK/h</span><span class="tag tag-accent">Session</span><span class="tag tag-accent">Mining</span>
-              </div>
+            <div class="field"><label>Angezeigte Werte <span class="head-note">(anklicken zum An-/Abwählen)</span></label>
+              <div class="tagrow" id="metricToggles"></div>
             </div>
             <div class="field"><label>Aktualisierung</label>
               <div class="head-note">Widget alle 5 s — der Kontostand selbst kommt von CCP höchstens alle 2 min neu</div>

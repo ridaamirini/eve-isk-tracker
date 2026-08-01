@@ -1,4 +1,4 @@
-# PULSAR — EVE Online ISK Tracker
+# EVE ISK Tracker
 
 Windows-Desktop-App, die dein EVE-Online-Wallet über CCPs offizielle ESI-API ausliest, alle
 Daten **dauerhaft lokal** sammelt und daraus Auswertungen rechnet — mit Live-Widget für
@@ -9,7 +9,7 @@ OBS/Streamlabs. Eine EXE, keine Installation, keine Cloud, kein fremder Server.
 ## Warum?
 
 CCP liefert über die API nur ein rollierendes Fenster (Wallet-Journal und Transaktionen
-reichen ca. 30 Tage zurück). PULSAR ruft die Daten regelmäßig ab und behält sie in einer
+reichen ca. 30 Tage zurück). Der EVE ISK Tracker ruft die Daten regelmäßig ab und behält sie in einer
 lokalen SQLite-Datenbank — je länger die App mitläuft, desto weiter reicht die eigene
 Historie zurück, auch über das hinaus, was das Spiel selbst noch anzeigt.
 
@@ -24,8 +24,9 @@ Historie zurück, auch über das hinaus, was das Spiel selbst noch anzeigt.
   Industrie, Session-Historie
 - **Sessions** — Start/Stopp per Klick, ISK-Differenz und ISK/h live, Zuordnung von
   Mining-Erträgen zum Session-Zeitfenster
-- **Stream-Widget** — 420 × 128 px Browser-Quelle („PULSAR LIVE") mit Wallet · ISK/h ·
-  Session · Mining, transparenter Hintergrund, Vorschau in der App
+- **Stream-Widget** — 420 × 128 px Browser-Quelle („ISK TRACKER · LIVE") mit Wallet ·
+  ISK/h · Session · Mining, per Klick an-/abwählbar, transparenter Hintergrund,
+  Vorschau in der App; Update-Countdown im Dashboard zeigt, von wann der Stand ist
 
 | Wallet | Stream-Widget |
 |---|---|
@@ -100,7 +101,7 @@ EveIskTracker.Desktop/   WinForms-Fenster (WebView2) + interner Kestrel-Server (
   SyncService.cs         Abgleich im Takt der ESI-Cache-Zeiten
   Analytics.cs           FIFO-Engine, Ratting/Mining/Industrie-Auswertung
   Sessions.cs            Session-Verfolgung
-  wwwroot/               PULSAR-Oberfläche (in die EXE eingebettet)
+  wwwroot/               Oberfläche (in die EXE eingebettet)
 EveIskTracker.Tests/     Rechentests + Demo-Daten-Seeder
 ```
 

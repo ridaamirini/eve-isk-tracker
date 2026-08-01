@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
 <meta charset="utf-8">
-<title>PULSAR Widget</title>
+<title>EVE ISK Tracker Widget</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
 <style>
@@ -47,18 +47,10 @@
 <div id="w">
   <div class="head">
     <span class="dot"></span>
-    <span class="title">PULSAR LIVE</span>
+    <span class="title">ISK TRACKER · LIVE</span>
     <span class="char" id="char">–</span>
   </div>
-  <div class="row">
-    <div class="cell"><div class="label">WALLET</div><div class="value" id="wallet">–</div></div>
-    <div class="sep"></div>
-    <div class="cell"><div class="label">ISK/H</div><div class="value accent" id="rate">–</div></div>
-    <div class="sep"></div>
-    <div class="cell"><div class="label">SESSION</div><div class="value" id="session">–</div></div>
-    <div class="sep"></div>
-    <div class="cell"><div class="label">MINING</div><div class="value" id="mining">–</div></div>
-  </div>
+  <div class="row" id="row"></div>
 </div>
 
 <script>
@@ -74,6 +66,14 @@ function fmt(v){
 }
 const signed = v => (v < 0 ? '−' : '+') + fmt(v);
 
+// Welche Kacheln es gibt; die Auswahl kommt vom Server (in der App umschaltbar)
+const METRICS = {
+  wallet:  { label: 'WALLET',  render: d => ({ text: fmt(d.balance), cls: '' }) },
+  rate:    { label: 'ISK/H',   render: d => d.active ? { text: signed(d.iskPerHour), cls: 'accent' } : { text: '–', cls: '' } },
+  session: { label: 'SESSION', render: d => d.active ? { text: signed(d.delta), cls: d.delta > 0 ? 'pos' : d.delta < 0 ? 'neg' : '' } : { text: '–', cls: '' } },
+  mining:  { label: 'MINING',  render: d => d.active && d.mining > 0 ? { text: fmt(d.mining), cls: '' } : { text: '–', cls: '' } },
+};
+
 async function tick(){
   const w = document.getElementById('w');
   if (!charId){ w.classList.remove('on'); return; }
@@ -83,19 +83,14 @@ async function tick(){
     const d = await r.json();
 
     document.getElementById('char').textContent = d.name || '';
-    document.getElementById('wallet').textContent = fmt(d.balance);
 
-    const rate = document.getElementById('rate');
-    const sess = document.getElementById('session');
-    const mine = document.getElementById('mining');
-    if (d.active){
-      rate.textContent = signed(d.iskPerHour);
-      sess.textContent = signed(d.delta);
-      sess.className = 'value ' + (d.delta > 0 ? 'pos' : d.delta < 0 ? 'neg' : '');
-      mine.textContent = d.mining > 0 ? fmt(d.mining) : '–';
-    } else {
-      rate.textContent = '–'; sess.textContent = '–'; sess.className = 'value'; mine.textContent = '–';
-    }
+    const keys = (d.metrics || []).filter(k => METRICS[k]);
+    const list = keys.length ? keys : Object.keys(METRICS);
+    document.getElementById('row').innerHTML = list.map(k => {
+      const v = METRICS[k].render(d);
+      return `<div class="cell"><div class="label">${METRICS[k].label}</div><div class="value ${v.cls}">${v.text}</div></div>`;
+    }).join('<div class="sep"></div>');
+
     w.classList.add('on');
   } catch(e){
     // App nicht erreichbar: ausblenden statt Fehler im Stream zeigen
