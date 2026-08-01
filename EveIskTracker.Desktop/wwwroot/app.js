@@ -181,6 +181,10 @@ async function loadStatus() {
       ? `<div class="banner info">Noch nicht eingerichtet — unter <b>Settings</b> die Client-ID eintragen und einen Charakter anmelden.</div>` : '') +
     errs.map(e => `<div class="banner err"><b>${esc(e.resource)}</b>: ${esc(e.error)}</div>`).join('');
 
+  // Timing-Karte: aktive Glättungsstufe markieren
+  document.querySelectorAll('#rateHoldSeg .seg-opt').forEach(x =>
+    x.classList.toggle('on', Number(x.dataset.hold) === (st.rateHold || 300)));
+
   $('charAdmin').innerHTML = chars.map(c => `
     <div class="row" style="border:1px solid var(--color-neutral-800);border-radius:8px;padding:10px 12px">
       <div class="char-avatar" style="width:34px;height:34px">${esc(initials(c.name))}</div>
@@ -596,6 +600,19 @@ $('btnCopyUrl').addEventListener('click', async e => {
 
 $('btnScene').addEventListener('click', () => $('sceneBox').classList.remove('checker'));
 $('btnChecker').addEventListener('click', () => $('sceneBox').classList.add('checker'));
+
+$('rateHoldSeg').addEventListener('click', async e => {
+  const b = e.target.closest('[data-hold]');
+  if (!b) return;
+  try {
+    await api('/api/config', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rateHold: b.dataset.hold }),
+    });
+    S.status.rateHold = Number(b.dataset.hold);
+    document.querySelectorAll('#rateHoldSeg .seg-opt').forEach(x => x.classList.toggle('on', x === b));
+  } catch (err) { alert('Speichern fehlgeschlagen: ' + err.message); }
+});
 
 // Login erst zulassen, wenn die Client-ID gespeichert ist — sonst navigiert das
 // ganze Fenster zu einer Fehlerseite, und das ist im Desktop-Fenster eine Sackgasse.

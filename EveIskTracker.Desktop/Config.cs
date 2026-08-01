@@ -46,5 +46,16 @@ public static class Config
         }
     }
 
+    /// <summary>
+    /// Wie lange das Widget einen berechneten ISK/h-Wert stehen lässt (Sekunden).
+    /// ISK/h hat die laufende Zeit im Nenner und würde ohne Haltezeit im Stream
+    /// sichtbar kriechen. Einstellbar in den Settings, erklärt ebendort.
+    /// </summary>
+    public static int RateHoldSeconds
+    {
+        get => int.TryParse(Db.GetKv("rate_hold", "300"), out var v) ? Math.Clamp(v, 60, 3600) : 300;
+        set => Db.SetKv("rate_hold", Math.Clamp(value, 60, 3600).ToString());
+    }
+
     public static bool IsConfigured => !string.IsNullOrWhiteSpace(ClientId);
 }

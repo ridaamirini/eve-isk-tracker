@@ -73,6 +73,7 @@ WHERE last_error IS NOT NULL
                 contact = Config.Contact,
                 overlayTextPath = Config.OverlayTextPath,
                 overlayMetrics = Config.OverlayMetrics,
+                rateHold = Config.RateHoldSeconds,
                 redirectUri = Sso.RedirectUri,
                 scopes = Sso.Scopes,
                 characters = chars,
@@ -91,6 +92,7 @@ WHERE last_error IS NOT NULL
             if (form.TryGetValue("contact", out var ct)) Config.Contact = ct;
             if (form.TryGetValue("overlayTextPath", out var op)) Config.OverlayTextPath = op;
             if (form.TryGetValue("overlayMetrics", out var om)) Config.OverlayMetrics = om;
+            if (form.TryGetValue("rateHold", out var rh) && int.TryParse(rh, out var rhv)) Config.RateHoldSeconds = rhv;
             return Results.Ok(new { ok = true });
         });
 
@@ -279,9 +281,10 @@ ORDER BY started_utc DESC LIMIT 50", ("$c", charId));
                 iskPerHour = st.IskPerHour,
                 mining = st.MiningValue,
                 hours = st.Hours,
-                // Auswahl der Kacheln wandert mit — so greifen Änderungen im Widget
-                // binnen Sekunden, ohne die Browser-Quelle anzufassen
+                // Auswahl der Kacheln und Haltezeit wandern mit — so greifen Änderungen
+                // im Widget binnen Sekunden, ohne die Browser-Quelle anzufassen
                 metrics = Config.OverlayMetrics.Split(','),
+                rateHold = Config.RateHoldSeconds,
             });
         });
 

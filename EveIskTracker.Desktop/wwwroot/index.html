@@ -260,6 +260,43 @@
         </div>
       </div>
 
+      <div class="card pad" style="margin-bottom:14px">
+        <span class="kicker">TIMING &amp; AKTUALISIERUNG</span>
+        <div class="head-note" style="margin-top:8px;line-height:1.55">
+          CCP hält jede API-Antwort eine feste Zeit im Cache — häufigeres Abfragen liefert bis
+          dahin exakt dieselben Daten. Die App prüft alle 20&nbsp;Sekunden, ob etwas Neues
+          bereitliegt, und holt es dann sofort:
+        </div>
+        <div class="tablewrap"><table class="table" style="margin-top:8px">
+          <thead><tr><th>Daten</th><th>Neu von CCP</th><th>Steckt in</th></tr></thead>
+          <tbody>
+            <tr><td>Kontostand</td><td class="num">alle 2 min</td><td>Session-Zähler, Widget, Kennzahlen</td></tr>
+            <tr><td>Journal (Buchungen)</td><td class="num">stündlich</td><td>Aufschlüsselung, Charts, Ratting, Recent Activity</td></tr>
+            <tr><td>Mining-Ledger</td><td class="num">alle 10 min</td><td>Mining-Karten, Widget-Kachel</td></tr>
+            <tr><td>Produktionsjobs</td><td class="num">alle 5 min</td><td>Industrie-Report</td></tr>
+            <tr><td>Marktorders</td><td class="num">alle 20 min</td><td>Handels-Report</td></tr>
+            <tr><td>Marktpreise</td><td class="num">stündlich</td><td>Mining-/Industrie-Bewertung</td></tr>
+          </tbody>
+        </table></div>
+        <div class="fields">
+          <div class="field"><label>ISK/h-Glättung im Stream-Widget</label>
+            <div class="seg" id="rateHoldSeg">
+              <span class="seg-opt" data-hold="120">2 min</span>
+              <span class="seg-opt" data-hold="300">5 min</span>
+              <span class="seg-opt" data-hold="600">10 min</span>
+            </div>
+            <div class="head-note" style="margin-top:8px;line-height:1.55">
+              Das Widget übernimmt Zahlen grundsätzlich nur, wenn CCP wirklich neue Daten
+              geliefert hat — dazwischen steht die Anzeige still. Einzige Ausnahme ist
+              <b>ISK/h</b>: dieser Wert ist „verdientes ISK geteilt durch verstrichene Zeit"
+              und würde ständig weiterkriechen, weil die Zeit ja immer weiterläuft. Deshalb wird
+              er nur im hier gewählten Abstand neu berechnet (bei Session-Start/-Stopp sofort).
+              Kürzer = aktueller, länger = ruhigeres Bild im Stream.
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="card pad">
         <span class="kicker">DATA</span>
         <div class="head-note" style="margin-top:8px">Alle Daten lokal in <code id="dbPath">–</code></div>

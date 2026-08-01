@@ -78,7 +78,8 @@ const METRICS = {
 // Daten geliefert hat (Kontostand/Mining), nicht bei jedem Abfrage-Tick. ISK/h enthält
 // die laufende Zeit als Divisor und würde sonst ständig kriechen — sie wird höchstens
 // alle 5 Minuten neu berechnet (und sofort bei Session-Start/-Stopp).
-const RATE_HOLD_MS = 5 * 60 * 1000;
+// Haltezeit kommt vom Server mit (in den Settings einstellbar), Standard 5 min
+let rateHoldMs = 5 * 60 * 1000;
 const last = { active: null, balance: null, delta: null, mining: null, metrics: '', rate: { text: '–', cls: '' }, rateAt: 0 };
 
 async function tick(){
@@ -94,10 +95,12 @@ async function tick(){
     const metricsKey = list.join(',');
     const now = Date.now();
 
+    if (d.rateHold) rateHoldMs = d.rateHold * 1000;
+
     const activeChanged = d.active !== last.active;
     const dataChanged = d.balance !== last.balance || d.delta !== last.delta || d.mining !== last.mining;
     const layoutChanged = metricsKey !== last.metrics;
-    const rateDue = activeChanged || (now - last.rateAt >= RATE_HOLD_MS);
+    const rateDue = activeChanged || (now - last.rateAt >= rateHoldMs);
 
     if (rateDue) { last.rate = METRICS.rate.render(d); last.rateAt = now; }
 
