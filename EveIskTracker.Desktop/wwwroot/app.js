@@ -699,9 +699,14 @@ document.addEventListener('click', async e => {
 
 (async function init() {
   // #dash / #wallet / #reports / #overlay / #settings als Direkteinstieg,
-  // optional mit Charakter-ID: #dash:90000001
-  const [forced, forcedChar] = location.hash.replace('#', '').split(':');
+  // optional mit Charakter-ID und Reports-Tab: #reports:90000001:kills
+  const [forced, forcedChar, forcedTab] = location.hash.replace('#', '').split(':');
   if (forcedChar) S.charId = Number(forcedChar);
+  if (forcedTab && $('tab-' + forcedTab)) {
+    S.tab = forcedTab;
+    document.querySelectorAll('#tabbar .seg-opt').forEach(x =>
+      x.classList.toggle('on', x.dataset.tab === forcedTab));
+  }
   await loadStatus();
   const needSetup = !S.status.configured || (S.status.characters || []).length === 0;
   await showScreen(loaders[forced] ? forced : (needSetup ? 'settings' : 'dash'));

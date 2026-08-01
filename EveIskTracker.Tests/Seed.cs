@@ -22,6 +22,13 @@ public static class Seed
                  ON CONFLICT(character_id) DO UPDATE SET name='DEMO Pilot', last_balance=$b, enabled=0",
             ("$c", DemoId), ("$t", Util.NowIso()), ("$b", 42_000_000_000d));
 
+        // Schein-Token nur mit Scope-Liste (kein echtes Refresh-Token): unterdrückt
+        // die "Scope fehlt"-Hinweise in der Oberfläche; der Sync bleibt via enabled=0 aus
+        Db.Run(@"INSERT INTO tokens(character_id,refresh_blob,scopes,updated_utc)
+                 VALUES($c,NULL,$s,$t)
+                 ON CONFLICT(character_id) DO UPDATE SET scopes=$s",
+            ("$c", DemoId), ("$s", string.Join(" ", EveIskTracker.Sso.Scopes)), ("$t", Util.NowIso()));
+
         // --- Namen und Preise ---
         var items = new (long Id, string Name, double Price)[]
         {

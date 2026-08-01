@@ -34,6 +34,7 @@ Historie zurück, auch über das hinaus, was das Spiel selbst noch anzeigt.
 | ![Wallet](docs/wallet.png) | ![Widget](docs/widget.png) |
 
 ![Reports](docs/reports.png)
+![Kills](docs/kills.png)
 ![Stream Overlay](docs/overlay.png)
 
 ## Sicherheit & Datenschutz

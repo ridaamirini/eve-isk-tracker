@@ -13,6 +13,33 @@ if (args.Length > 0 && (args[0] == "seed" || args[0] == "unseed"))
     return 0;
 }
 
+// Zeigt, was in einer DB-Datei steckt (Diagnose): dotnet run -- dbinfo <pfad>
+if (args.Length > 1 && args[0] == "dbinfo")
+{
+    var target = args[1];
+    var cs = new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder
+    { DataSource = target, Mode = Microsoft.Data.Sqlite.SqliteOpenMode.ReadOnly }.ToString();
+    using var conn = new Microsoft.Data.Sqlite.SqliteConnection(cs);
+    conn.Open();
+    string One(string sql)
+    {
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = sql;
+        var v = cmd.ExecuteScalar();
+        return v == null || v == DBNull.Value ? "(null)" : v.ToString();
+    }
+    Console.WriteLine($"Datei: {target}");
+    Console.WriteLine($"  kv client_id       : {One("SELECT CASE WHEN value IS NULL OR value='' THEN '(leer)' ELSE substr(value,1,8)||'...' END FROM kv WHERE key='client_id'")}");
+    Console.WriteLine($"  kv contact         : {One("SELECT value FROM kv WHERE key='contact'")}");
+    Console.WriteLine($"  Charaktere         : {One("SELECT COALESCE(GROUP_CONCAT(name || ' (' || character_id || ', enabled=' || enabled || ')'), '(keine)') FROM characters")}");
+    Console.WriteLine($"  Tokens             : {One("SELECT COUNT(*) FROM tokens")}");
+    Console.WriteLine($"  Journal-Eintraege  : {One("SELECT COUNT(*) FROM journal")}");
+    Console.WriteLine($"  Transaktionen      : {One("SELECT COUNT(*) FROM transactions")}");
+    Console.WriteLine($"  Sessions           : {One("SELECT COUNT(*) FROM sessions")}");
+    Console.WriteLine($"  Kills              : {One("SELECT COUNT(*) FROM kills")}");
+    return 0;
+}
+
 // Repariert offene Sessions, deren Startwert 0 ist (Session vor dem ersten
 // Wallet-Abgleich gestartet): nimmt den Journal-Kontostand zum Startzeitpunkt.
 if (args.Length > 0 && args[0] == "fixsessions")
