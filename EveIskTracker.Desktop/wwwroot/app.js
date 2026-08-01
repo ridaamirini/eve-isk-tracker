@@ -710,7 +710,7 @@ async function loadOverlayScreen() {
 
   const defs = metricDefs();
   const act = activeMetrics();
-  const cell = k => {
+  const cell = (k, cw) => {
     let text = '–', cls = '';
     if (k === 'wallet') text = fmtIsk(d.balance);
     if (k === 'time' && d.active) text = sessionClock(d.hours);
@@ -722,12 +722,14 @@ async function loadOverlayScreen() {
     if (k === 'destroyed' && d.active && d.destroyed > 0) { text = fmtIsk(d.destroyed); cls = 'accent'; }
     if (k === 'mining' && d.active && d.mining > 0) text = fmtIsk(d.mining);
     const def = defs.find(m => m.key === k);
-    return `<div class="pw-cell"><div class="pw-label">${def.label}</div><div class="pw-value ${cls}">${text}</div></div>`;
+    return `<div class="pw-cell" style="${cw}"><div class="pw-label">${def.label}</div><div class="pw-value ${cls}">${text}</div></div>`;
   };
-  // wie im Widget: bis 4 Kacheln eine Reihe, ab 5 zwei ausgewogene Reihen
+  // wie im Widget: bis 4 Kacheln eine Reihe, ab 5 zwei ausgewogene Reihen;
+  // Zellenbreite folgt der vollsten Reihe, kürzere Reihen werden zentriert
   const rows = act.length <= 4 ? [act] : [act.slice(0, Math.ceil(act.length / 2)), act.slice(Math.ceil(act.length / 2))];
+  const cellW = `width:calc(${(100 / rows[0].length).toFixed(3)}% - 1px)`;
   $('pvRow').innerHTML = rows.map(r =>
-    '<div class="pw-row">' + r.map(cell).join('<div class="pw-sep"></div>') + '</div>').join('');
+    '<div class="pw-row">' + r.map(k => cell(k, cellW)).join('<div class="pw-sep"></div>') + '</div>').join('');
 
   $('metricToggles').innerHTML = defs.map(m =>
     `<span class="tag ${act.includes(m.key) ? 'tag-accent' : 'tag-off'} click" data-metric="${m.key}">${m.name}</span>`).join('');

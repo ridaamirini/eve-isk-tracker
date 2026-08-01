@@ -35,8 +35,10 @@
   .title{font-size:10px;letter-spacing:.16em;color:var(--accent-200)}
   .char{margin-left:auto;font-size:10px;color:var(--n400);display:flex;align-items:center;gap:6px}
   .char img{width:18px;height:18px;border-radius:50%;border:1px solid var(--accent-800)}
-  .row{display:flex;padding:12px 6px 0}
-  .cell{flex:1;text-align:center}
+  /* Zellenbreite richtet sich nach der vollsten Reihe; kürzere Reihen werden
+     zentriert — sonst blähen sich z.B. 2 Zellen unter 3en unschön auf */
+  .row{display:flex;justify-content:center;padding:12px 6px 0}
+  .cell{flex:0 0 auto;text-align:center}
   .label{font-size:9px;letter-spacing:.12em;color:var(--n400)}
   .value{font-family:'Chakra Petch',sans-serif;font-size:19px;color:var(--text);font-variant-numeric:tabular-nums}
   .value.accent{color:var(--accent-200)}
@@ -142,11 +144,13 @@ async function tick(){
       document.getElementById('char').innerHTML = d.showChar
         ? `<img src="https://images.evetech.net/characters/${d.charId}/portrait?size=64" alt="" onerror="this.remove()">${(d.name || '').replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}`
         : '';
-      document.getElementById('rows').innerHTML = chunkRows(list).map(row =>
+      const rows = chunkRows(list);
+      const cellW = `width:calc(${(100 / rows[0].length).toFixed(3)}% - 1px)`;
+      document.getElementById('rows').innerHTML = rows.map(row =>
         '<div class="row">' + row.map(k => {
           const v = k === 'rate' ? last.rate : METRICS[k].render(d);
           const id = v.timer ? ' id="tmr"' : '';
-          return `<div class="cell"><div class="label">${METRICS[k].label[lx]}</div><div class="value ${v.cls}"${id}>${v.text}</div></div>`;
+          return `<div class="cell" style="${cellW}"><div class="label">${METRICS[k].label[lx]}</div><div class="value ${v.cls}"${id}>${v.text}</div></div>`;
         }).join('<div class="sep"></div>') + '</div>').join('');
       last.active = d.active; last.balance = d.balance; last.delta = d.delta;
       last.mining = d.mining; last.bounties = d.bounties; last.missions = d.missions;
