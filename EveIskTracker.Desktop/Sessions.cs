@@ -53,8 +53,11 @@ ORDER BY s.started_utc DESC LIMIT 1", ("$c", charId));
 
         var started = Util.ParseIso(st.StartedUtc);
         st.Delta = st.CurrentBalance - st.StartBalance;
-        st.Hours = Math.Max((Util.UtcNow - started).TotalHours, 1.0 / 60);
-        st.IskPerHour = st.Delta / st.Hours;
+        // Dauer echt anzeigen (Timer startet bei 0) — nur die ISK/h-Division
+        // wird auf mindestens 1 Minute geklemmt, sonst explodiert die
+        // Hochrechnung in den ersten Sekunden einer Session
+        st.Hours = (Util.UtcNow - started).TotalHours;
+        st.IskPerHour = st.Delta / Math.Max(st.Hours, 1.0 / 60);
         st.LastSampleUtc = LastSample(st.Id);
 
         st.Breakdown = BreakdownFor(charId, started, Util.UtcNow);

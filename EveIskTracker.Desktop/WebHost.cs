@@ -264,7 +264,8 @@ ORDER BY started_utc DESC LIMIT 50", ("$c", charId));
                 var end = Util.ParseIso(r.GetString(3));
                 var sb = r.IsDBNull(4) ? 0 : r.GetDouble(4);
                 var eb = r.IsDBNull(5) ? 0 : r.GetDouble(5);
-                var hours = Math.Max((end - start).TotalHours, 1.0 / 60);
+                // echte Dauer ausweisen; nur die Rate gegen Mini-Sessions klemmen
+                var hours = (end - start).TotalHours;
                 list.Add(new
                 {
                     id = r.GetInt64(0),
@@ -273,7 +274,7 @@ ORDER BY started_utc DESC LIMIT 50", ("$c", charId));
                     endedUtc = r.GetString(3),
                     delta = eb - sb,
                     hours,
-                    iskPerHour = (eb - sb) / hours,
+                    iskPerHour = (eb - sb) / Math.Max(hours, 1.0 / 60),
                 });
             }
             return Results.Ok(list);
