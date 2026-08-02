@@ -170,6 +170,7 @@ const REF_EN = {
   'Spielerspende': 'Player donation', 'Corp-Abbuchung': 'Corp withdrawal',
   'PI-Importsteuer': 'PI import tax', 'PI-Exportsteuer': 'PI export tax', 'Skill-Kauf': 'Skill purchase',
   'Klon-Gebühr': 'Clone fee', 'Sprungtor-Gebühr': 'Gate jump fee',
+  'Daily-Goal-Belohnung': 'Daily goal payout', 'Freelance-Job': 'Freelance job',
   'Missionen': 'Missions', 'Verträge': 'Contracts', 'Abzüge (Steuern/Gebühren)': 'Deductions (taxes/fees)',
   'Sonstiges': 'Other', 'Bounties & Loot': 'Bounties & loot',
 };

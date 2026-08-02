@@ -297,7 +297,8 @@ ORDER BY started_utc DESC LIMIT 50", ("$c", charId));
                 bounties = Analytics.SumRefTypes(charId, started, Util.UtcNow,
                     "bounty_prizes", "bounty_prize", "bounty", "ess_escrow_transfer");
                 missions = Analytics.SumRefTypes(charId, started, Util.UtcNow,
-                    "agent_mission_reward", "agent_mission_time_bonus_reward", "mission_reward", "mission_completion");
+                    "agent_mission_reward", "agent_mission_time_bonus_reward", "mission_reward", "mission_completion",
+                    "daily_goal_payouts", "freelance_jobs_reward");
 
                 using var c = Db.Open();
                 using var cmd = Db.Cmd(c, @"

@@ -177,7 +177,10 @@ FROM transactions WHERE character_id=$c ORDER BY date_utc ASC, transaction_id AS
     {
         ["Bounties"] = new[] { "bounty_prizes", "bounty_prize", "bounty", "bounty_surcharge", "bounty_reimbursement" },
         ["ESS-Auszahlung"] = new[] { "ess_escrow_transfer" },
-        ["Missionen"] = new[] { "agent_mission_reward", "agent_mission_time_bonus_reward", "mission_reward", "mission_completion" },
+        // daily_goal_payouts/freelance_jobs_reward: neuere PvE-Belohnungen (AIR Daily
+        // Goals, Freelance Jobs) — gehören sinngemäß zu den Missionen
+        ["Missionen"] = new[] { "agent_mission_reward", "agent_mission_time_bonus_reward", "mission_reward", "mission_completion",
+                                "daily_goal_payouts", "freelance_jobs_reward" },
         ["Versicherung"] = new[] { "insurance" },
         ["Verträge"] = new[] { "contract_reward", "contract_price", "contract_reward_deposited" },
         ["Corp-Auszahlung"] = new[] { "corporate_reward_payout" },
