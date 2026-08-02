@@ -161,6 +161,8 @@ public class SyncService : BackgroundService
             // Frisch Geholtes sofort in die Hauptdatei übernehmen — die App wird oft
             // hart beendet (Tray, Taskkill), da darf nichts lange nur im WAL liegen
             Db.Checkpoint();
+            // Läuft die App tagelang im Tray durch, trotzdem täglich sichern
+            Db.BackupIfDue();
         }
         finally { Busy = false; }
     }

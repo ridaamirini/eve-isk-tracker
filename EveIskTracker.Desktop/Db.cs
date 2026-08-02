@@ -24,17 +24,72 @@ public static class Db
             Cache = SqliteCacheMode.Shared,
         }.ToString();
 
-        using var c = Open();
-        Exec(c, "PRAGMA journal_mode=WAL;");
-        // FULL statt NORMAL: im WAL-Modus fsynct NORMAL Commits nicht — bei einem
-        // harten Neustart können dann alle Daten seit dem letzten Checkpoint
-        // verloren gehen. Genau das ist einmal passiert; die paar ms pro Commit
-        // sind es wert.
-        Exec(c, "PRAGMA synchronous=FULL;");
-        Exec(c, "PRAGMA busy_timeout=8000;");
-        CreateSchema(c);
+        // Selbstheilung: harte Neustarts haben die Hauptdatei nachweislich schon
+        // korrumpiert ("malformed"). Statt mit kaputter Datei loszulaufen wird
+        // geprüft und im Fehlerfall automatisch das Backup eingespielt.
+        if (!TryPrepare())
+        {
+            RestoreFromBackup();
+            if (!TryPrepare())
+                throw new InvalidOperationException(
+                    "Datenbank ist beschädigt und kein brauchbares Backup vorhanden. " +
+                    "Bitte die Dateien unter " + dataDir + " prüfen.");
+        }
+
         Checkpoint();
-        BackupIfDue();
+        BackupNow();   // frischer Schnappschuss bei jedem Start (2 Generationen)
+    }
+
+    /// <summary>Pragmas, Integritätsprüfung, Schema. false = Datei unbrauchbar.</summary>
+    private static bool TryPrepare()
+    {
+        try
+        {
+            using var c = Open();
+            Exec(c, "PRAGMA journal_mode=WAL;");
+            // FULL statt NORMAL: im WAL-Modus fsynct NORMAL Commits nicht — bei einem
+            // harten Neustart können dann Daten seit dem letzten Checkpoint verloren gehen.
+            Exec(c, "PRAGMA synchronous=FULL;");
+            Exec(c, "PRAGMA busy_timeout=8000;");
+
+            using (var chk = Cmd(c, "PRAGMA quick_check(1);"))
+            {
+                var res = chk.ExecuteScalar() as string;
+                if (!string.Equals(res, "ok", StringComparison.OrdinalIgnoreCase)) return false;
+            }
+
+            CreateSchema(c);
+            return true;
+        }
+        catch (SqliteException) { return false; }
+    }
+
+    /// <summary>
+    /// Kaputte Hauptdatei beiseitelegen (Forensik) und den jüngsten brauchbaren
+    /// Schnappschuss einspielen. Gibt es keinen, startet die App mit leerer Datenbank.
+    /// </summary>
+    private static void RestoreFromBackup()
+    {
+        SqliteConnection.ClearAllPools();
+        var dir = System.IO.Path.GetDirectoryName(Path);
+        var backup = System.IO.Path.Combine(dir, "eveisk.backup.db");
+        var backupOld = System.IO.Path.Combine(dir, "eveisk.backup.old.db");
+
+        try
+        {
+            if (File.Exists(Path))
+            {
+                var quarantine = System.IO.Path.Combine(dir,
+                    $"eveisk.corrupt-{Util.UtcNow:yyyyMMdd-HHmmss}.db");
+                File.Move(Path, quarantine, true);
+            }
+            if (File.Exists(Path + "-wal")) File.Delete(Path + "-wal");
+            if (File.Exists(Path + "-shm")) File.Delete(Path + "-shm");
+
+            var src = File.Exists(backup) ? backup : (File.Exists(backupOld) ? backupOld : null);
+            if (src != null) File.Copy(src, Path, true);
+        }
+        catch { /* schlimmstenfalls legt CreateSchema eine frische Datenbank an */ }
     }
 
     /// <summary>WAL in die Hauptdatei übernehmen — klein halten, was verloren gehen könnte.</summary>
@@ -49,25 +104,41 @@ public static class Db
     }
 
     /// <summary>
-    /// Höchstens einmal täglich einen konsistenten Schnappschuss neben die DB legen.
-    /// VACUUM INTO liest über den WAL hinweg und schreibt eine in sich stimmige Kopie.
+    /// Konsistenten Schnappschuss neben die DB legen (VACUUM INTO liest über den WAL
+    /// hinweg). Zwei Generationen: das vorige Backup rückt nach .old — falls die
+    /// Hauptdatei just zwischen zwei Backups kippt, gibt es noch einen Stand davor.
     /// </summary>
-    public static void BackupIfDue()
+    public static void BackupNow()
     {
         try
         {
-            var backup = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(Path), "eveisk.backup.db");
-            if (File.Exists(backup) && (Util.UtcNow - File.GetLastWriteTimeUtc(backup)).TotalHours < 24)
-                return;
+            var dir = System.IO.Path.GetDirectoryName(Path);
+            var backup = System.IO.Path.Combine(dir, "eveisk.backup.db");
+            var backupOld = System.IO.Path.Combine(dir, "eveisk.backup.old.db");
             var tmp = backup + ".tmp";
             if (File.Exists(tmp)) File.Delete(tmp);
+
             using (var c = Open())
             using (var cmd = Cmd(c, "VACUUM INTO $p", ("$p", tmp)))
                 cmd.ExecuteNonQuery();
-            if (File.Exists(backup)) File.Delete(backup);
+
+            if (File.Exists(backup))
+            {
+                if (File.Exists(backupOld)) File.Delete(backupOld);
+                File.Move(backup, backupOld);
+            }
             File.Move(tmp, backup);
         }
         catch { /* Backup ist Beiwerk — die App muss auch ohne laufen */ }
+    }
+
+    /// <summary>Für lange Tray-Laufzeiten: höchstens einmal täglich nachlegen.</summary>
+    public static void BackupIfDue()
+    {
+        var backup = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(Path), "eveisk.backup.db");
+        if (File.Exists(backup) && (Util.UtcNow - File.GetLastWriteTimeUtc(backup)).TotalHours < 24)
+            return;
+        BackupNow();
     }
 
     public static SqliteConnection Open()
