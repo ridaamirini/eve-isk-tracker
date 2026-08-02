@@ -702,39 +702,34 @@ const activeMetrics = () =>
 async function loadOverlayScreen() {
   if (!S.charId) return;
   const d = await api(`/api/overlay-data?charId=${S.charId}`);
-  $('pvChar').innerHTML = d.showChar
-    ? `${portraitImg(S.charId)}${esc(d.name || '–')}` : '';
+
+  // Vorschau = das echte Widget als iframe; nur bei Charakterwechsel neu laden,
+  // Daten- und Konfig-Änderungen holt es sich über sein eigenes 5s-Polling selbst
+  const frame = $('pvFrame');
+  const src = `/overlay?charId=${S.charId}`;
+  if (!frame.dataset.src || frame.dataset.src !== src) {
+    frame.dataset.src = src;
+    frame.src = src;
+  }
+  scalePreview();
 
   // Opsec-Schalter: Portrait & Name im Widget-Kopf an/aus
   $('charToggle').innerHTML =
     `<span class="tag ${d.showChar ? 'tag-accent' : 'tag-off'} click" data-char-toggle="${d.showChar ? 0 : 1}">${t('charToggleName')}</span>`;
 
-  const defs = metricDefs();
   const act = activeMetrics();
-  const cell = (k, cw) => {
-    let text = '–', cls = '';
-    if (k === 'wallet') text = fmtIsk(d.balance);
-    if (k === 'time' && d.active) text = sessionClock(d.hours);
-    if (k === 'rate' && d.active) { text = signed(d.iskPerHour); cls = 'accent'; }
-    if (k === 'session' && d.active) { text = signed(d.delta); cls = d.delta > 0 ? 'pos' : d.delta < 0 ? 'neg' : ''; }
-    if (k === 'bounties' && d.active && d.bounties > 0) { text = fmtIsk(d.bounties); cls = 'pos'; }
-    if (k === 'missions' && d.active && d.missions > 0) { text = fmtIsk(d.missions); cls = 'pos'; }
-    if (k === 'kills' && d.active) text = String(d.kills || 0);
-    if (k === 'destroyed' && d.active && d.destroyed > 0) { text = fmtIsk(d.destroyed); cls = 'accent'; }
-    if (k === 'mining' && d.active && d.mining > 0) text = fmtIsk(d.mining);
-    const def = defs.find(m => m.key === k);
-    return `<div class="pw-cell" style="${cw}"><div class="pw-label">${def.label}</div><div class="pw-value ${cls}">${text}</div></div>`;
-  };
-  // wie im Widget: bis 4 Kacheln eine Reihe, ab 5 zwei ausgewogene Reihen;
-  // Zellenbreite folgt der vollsten Reihe, kürzere Reihen werden zentriert
-  const rows = act.length <= 4 ? [act] : [act.slice(0, Math.ceil(act.length / 2)), act.slice(Math.ceil(act.length / 2))];
-  const cellW = `width:calc(${(100 / rows[0].length).toFixed(3)}% - 1px)`;
-  $('pvRow').innerHTML = rows.map(r =>
-    '<div class="pw-row">' + r.map(k => cell(k, cellW)).join('<div class="pw-sep"></div>') + '</div>').join('');
-
-  $('metricToggles').innerHTML = defs.map(m =>
+  $('metricToggles').innerHTML = metricDefs().map(m =>
     `<span class="tag ${act.includes(m.key) ? 'tag-accent' : 'tag-off'} click" data-metric="${m.key}">${m.name}</span>`).join('');
 }
+
+/** Das 420×240-Widget proportional in die Szenen-Vorschau einpassen. */
+function scalePreview() {
+  const scene = $('sceneBox');
+  if (!scene || scene.clientWidth === 0) return;
+  const scale = Math.min(1, (scene.clientWidth * 0.62) / 420);
+  $('pvFrame').style.transform = `scale(${scale.toFixed(3)})`;
+}
+window.addEventListener('resize', () => { if (S.screen === 'overlay') scalePreview(); });
 
 $('autoStopToggle').addEventListener('click', async e => {
   const b = e.target.closest('[data-autostop]');

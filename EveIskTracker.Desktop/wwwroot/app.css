@@ -237,31 +237,12 @@ code{background:#0d1420;padding:2px 7px;border-radius:5px;font-size:12px;color:v
 .scene.checker{background:repeating-conic-gradient(#3a3a3a 0% 25%,#2b2b2b 0% 50%) 0 0/24px 24px}
 .scene-note{position:absolute;top:12px;right:14px;font-size:10px;letter-spacing:.14em;color:var(--color-neutral-400)}
 
-.pulsar-widget{
-  position:absolute;left:3%;bottom:5%;width:38%;min-width:300px;
-  border-radius:var(--radius-md);border:1px solid var(--color-accent-800);
-  background:color-mix(in srgb,var(--color-bg) 88%,transparent);
-  backdrop-filter:blur(6px);
-  box-shadow:var(--shadow-lg),0 0 24px color-mix(in srgb,var(--color-accent) 15%,transparent);
-  padding-bottom:12px;
+/* Die Vorschau ist das echte Widget (iframe /overlay), unten links in der Szene
+   verankert und per transform auf die Szenengröße skaliert */
+.pv-frame{
+  position:absolute;left:3%;bottom:5%;width:420px;height:240px;border:0;
+  transform-origin:left bottom;pointer-events:none;
 }
-.pw-head{
-  display:flex;align-items:center;gap:8px;padding:0 14px;height:30px;
-  border-bottom:1px solid color-mix(in srgb,var(--color-accent) 30%,transparent);
-}
-.pw-dot{width:6px;height:6px;border-radius:50%;background:var(--color-accent);box-shadow:0 0 8px var(--color-accent)}
-.pw-title{font-size:10px;letter-spacing:.16em;color:var(--color-accent-200)}
-.pw-char{margin-left:auto;font-size:10px;color:var(--color-neutral-400);display:flex;align-items:center;gap:6px}
-.pw-char img{width:18px;height:18px;border-radius:50%;border:1px solid var(--color-accent-800)}
-/* wie im echten Widget: Zellenbreite nach vollster Reihe, kürzere Reihen zentriert */
-.pw-row{display:flex;justify-content:center;padding:10px 6px 0}
-.pw-cell{flex:0 0 auto;text-align:center}
-.pw-label{font-size:9px;letter-spacing:.12em;color:var(--color-neutral-400)}
-.pw-value{font-family:var(--font-heading);font-size:19px;color:var(--color-text)}
-.pw-value.accent{color:var(--color-accent-200)}
-.pw-value.pos{color:var(--good)}
-.pw-value.neg{color:var(--bad)}
-.pw-sep{width:1px;background:linear-gradient(180deg,transparent,var(--color-neutral-700),transparent)}
 
 /* ---------- Meldungen ---------- */
 .banner{border-radius:9px;padding:11px 14px;margin-bottom:12px;font-size:13px}
