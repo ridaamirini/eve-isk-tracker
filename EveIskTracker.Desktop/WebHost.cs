@@ -569,8 +569,10 @@ WHERE character_id=$c ORDER BY date_utc DESC", ("$c", charId));
         var body = reader.ReadToEnd();
 
         // Nach App-Updates sollen OBS-Browserquellen und WebView2 sofort die neue
-        // Oberfläche laden: CSS/JS-Verweise mit der Versionsnummer entwerten.
-        var ver = asm.GetName().Version?.ToString(4) ?? "0";
+        // Oberfläche laden. Wichtig: Die Kennung muss sich pro BUILD ändern, nicht
+        // pro Versionsnummer — sonst klebt der Cache zwischen zwei 0.1.0-Builds an
+        // alten Dateien. Die ModuleVersionId ist bei jedem Kompilat neu.
+        var ver = asm.ManifestModule.ModuleVersionId.ToString("N").Substring(0, 8);
         if (file.EndsWith(".html"))
             body = body.Replace("href=\"app.css\"", $"href=\"app.css?v={ver}\"")
                        .Replace("src=\"app.js\"", $"src=\"app.js?v={ver}\"");
