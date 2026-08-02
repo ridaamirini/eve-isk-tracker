@@ -566,6 +566,14 @@ WHERE character_id=$c ORDER BY date_utc DESC", ("$c", charId));
 
         using var reader = new StreamReader(stream);
         var body = reader.ReadToEnd();
+
+        // Nach App-Updates sollen OBS-Browserquellen und WebView2 sofort die neue
+        // Oberfläche laden: CSS/JS-Verweise mit der Versionsnummer entwerten.
+        var ver = asm.GetName().Version?.ToString(4) ?? "0";
+        if (file.EndsWith(".html"))
+            body = body.Replace("href=\"app.css\"", $"href=\"app.css?v={ver}\"")
+                       .Replace("src=\"app.js\"", $"src=\"app.js?v={ver}\"");
+
         var mime = Path.GetExtension(file).ToLowerInvariant() switch
         {
             ".html" => "text/html; charset=utf-8",
@@ -575,7 +583,26 @@ WHERE character_id=$c ORDER BY date_utc DESC", ("$c", charId));
             ".svg" => "image/svg+xml",
             _ => "text/plain; charset=utf-8",
         };
-        return Results.Content(body, mime);
+
+        // HTML nie cachen (OBS hält Seiten sonst über App-Updates hinweg fest);
+        // CSS/JS dürfen dank Versions-Query lange gecacht werden
+        var res = Results.Content(body, mime);
+        return new NoCacheResult(res, file.EndsWith(".html"));
+    }
+
+    /// <summary>Setzt Cache-Header um ein bestehendes Result herum.</summary>
+    private sealed class NoCacheResult : IResult
+    {
+        private readonly IResult _inner;
+        private readonly bool _noStore;
+        public NoCacheResult(IResult inner, bool noStore) { _inner = inner; _noStore = noStore; }
+        public Task ExecuteAsync(HttpContext ctx)
+        {
+            ctx.Response.Headers.CacheControl = _noStore
+                ? "no-store, no-cache, must-revalidate"
+                : "public, max-age=31536000, immutable";
+            return _inner.ExecuteAsync(ctx);
+        }
     }
 
     private static string HtmlPage(string inner) =>

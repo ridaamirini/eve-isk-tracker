@@ -21,7 +21,11 @@ html,body{margin:0;height:100%}
 body{
   background:var(--color-bg); color:var(--color-text);
   font-family:var(--font-body); font-size:14px; line-height:1.5;
+  /* Desktop-App-Gefühl: Oberflächentext ist nicht markierbar … */
+  -webkit-user-select:none; user-select:none;
 }
+/* … Eingabefelder und kopierbare Werte natürlich schon */
+input,textarea,code,.input{-webkit-user-select:text; user-select:text}
 a{color:var(--color-accent-300);text-decoration:none}
 a:hover{color:var(--color-accent-200)}
 h1{margin:0;font-family:var(--font-heading);font-weight:500;font-size:24px}
