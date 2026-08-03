@@ -24,24 +24,40 @@ public static class Db
             Cache = SqliteCacheMode.Shared,
         }.ToString();
 
-        // Selbstheilung: harte Neustarts haben die Hauptdatei nachweislich schon
-        // korrumpiert ("malformed"). Statt mit kaputter Datei loszulaufen wird
-        // geprüft und im Fehlerfall automatisch das Backup eingespielt.
-        if (!TryPrepare())
+        // Selbstheilung mit Augenmaß: Nur ECHTE Korruption (SQLITE_CORRUPT/NOTADB)
+        // führt zur Backup-Wiederherstellung. Direkt nach dem Windows-Start kann die
+        // Datei kurzzeitig gesperrt sein (Virenscanner) — das ist KEINE Korruption
+        // und wird mit Wartezyklen überbrückt, sonst würde eine gesunde Datenbank
+        // fälschlich durch ein älteres Backup ersetzt.
+        var healthy = false;
+        for (var attempt = 0; attempt < 5 && !healthy; attempt++)
         {
-            RestoreFromBackup();
-            if (!TryPrepare())
+            var state = TryPrepare();
+            if (state == DbState.Ok) { healthy = true; break; }
+            if (state == DbState.Corrupt)
+            {
+                RestoreFromBackup();
+                if (TryPrepare() == DbState.Ok) { healthy = true; break; }
                 throw new InvalidOperationException(
                     "Datenbank ist beschädigt und kein brauchbares Backup vorhanden. " +
                     "Bitte die Dateien unter " + dataDir + " prüfen.");
+            }
+            // Transient (gesperrt o.ä.): kurz warten und erneut versuchen
+            Thread.Sleep(1500);
         }
+        if (!healthy)
+            throw new InvalidOperationException(
+                "Datenbank ist dauerhaft nicht zugreifbar (gesperrt?). " +
+                "Läuft ein Virenscan auf " + dataDir + "?");
 
         Checkpoint();
         BackupNow();   // frischer Schnappschuss bei jedem Start (2 Generationen)
     }
 
-    /// <summary>Pragmas, Integritätsprüfung, Schema. false = Datei unbrauchbar.</summary>
-    private static bool TryPrepare()
+    private enum DbState { Ok, Corrupt, Transient }
+
+    /// <summary>Pragmas, Integritätsprüfung, Schema — mit ehrlicher Fehlerdiagnose.</summary>
+    private static DbState TryPrepare()
     {
         try
         {
@@ -55,13 +71,18 @@ public static class Db
             using (var chk = Cmd(c, "PRAGMA quick_check(1);"))
             {
                 var res = chk.ExecuteScalar() as string;
-                if (!string.Equals(res, "ok", StringComparison.OrdinalIgnoreCase)) return false;
+                if (!string.Equals(res, "ok", StringComparison.OrdinalIgnoreCase)) return DbState.Corrupt;
             }
 
             CreateSchema(c);
-            return true;
+            return DbState.Ok;
         }
-        catch (SqliteException) { return false; }
+        catch (SqliteException ex)
+        {
+            // 11 = SQLITE_CORRUPT, 26 = SQLITE_NOTADB — nur das ist echte Korruption.
+            // Alles andere (BUSY, LOCKED, CANTOPEN, IOERR) ist möglicherweise vorübergehend.
+            return ex.SqliteErrorCode is 11 or 26 ? DbState.Corrupt : DbState.Transient;
+        }
     }
 
     /// <summary>

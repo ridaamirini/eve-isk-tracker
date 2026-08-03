@@ -13,12 +13,41 @@ if (args.Length > 0 && (args[0] == "seed" || args[0] == "unseed"))
     return 0;
 }
 
+// Prueft eine DB-Datei so, wie es die App beim Start tut (Read-Write + quick_check):
+// dotnet run -- checkrw <pfad>
+if (args.Length > 1 && args[0] == "checkrw")
+{
+    var cs = new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder
+    { DataSource = args[1], Mode = Microsoft.Data.Sqlite.SqliteOpenMode.ReadWriteCreate,
+      Cache = Microsoft.Data.Sqlite.SqliteCacheMode.Shared }.ToString();
+    try
+    {
+        using var conn = new Microsoft.Data.Sqlite.SqliteConnection(cs);
+        conn.Open();
+        void E(string sql) { using var x = conn.CreateCommand(); x.CommandText = sql; x.ExecuteNonQuery(); }
+        object S(string sql) { using var x = conn.CreateCommand(); x.CommandText = sql; return x.ExecuteScalar(); }
+        E("PRAGMA journal_mode=WAL;");
+        E("PRAGMA synchronous=FULL;");
+        Console.WriteLine($"quick_check      : {S("PRAGMA quick_check(1);")}");
+        Console.WriteLine($"integrity_check  : {S("PRAGMA integrity_check(1);")}");
+        Console.WriteLine($"sqlite_master    : {S("SELECT COUNT(*) FROM sqlite_master")} Objekte");
+        try { Console.WriteLine($"characters       : {S("SELECT COUNT(*) FROM characters")}"); }
+        catch (Exception ex) { Console.WriteLine($"characters       : FEHLER {ex.Message}"); }
+        try { Console.WriteLine($"kv lang          : {S("SELECT value FROM kv WHERE key='lang'") ?? "(null)"}"); }
+        catch (Exception ex) { Console.WriteLine($"kv               : FEHLER {ex.Message}"); }
+    }
+    catch (Exception ex) { Console.WriteLine($"OPEN/PRAGMA FEHLER: {ex.Message}"); }
+    return 0;
+}
+
 // Zeigt, was in einer DB-Datei steckt (Diagnose): dotnet run -- dbinfo <pfad>
 if (args.Length > 1 && args[0] == "dbinfo")
 {
     var target = args[1];
+    // ReadWrite, nicht ReadOnly: eine WAL-Datenbank, die nach hartem Ende
+    // Wiederherstellung braucht, meldet ReadOnly faelschlich "malformed"
     var cs = new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder
-    { DataSource = target, Mode = Microsoft.Data.Sqlite.SqliteOpenMode.ReadOnly }.ToString();
+    { DataSource = target, Mode = Microsoft.Data.Sqlite.SqliteOpenMode.ReadWrite }.ToString();
     using var conn = new Microsoft.Data.Sqlite.SqliteConnection(cs);
     conn.Open();
     string One(string sql)
