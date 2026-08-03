@@ -483,6 +483,76 @@ ORDER BY time_utc DESC LIMIT 200",
             return Results.Ok(new { killCount, lossCount, destroyed, lost, rows });
         });
 
+        // Erz-Tabelle im Stil von ore.cerlestes.de: ISK/m³ mit Jita-Preisen.
+        // Komprimiert ist 1:1 (1 Erz -> 1 komprimiertes) — der Wert pro GESCHÜRFTEM m³
+        // mit Komprimiert-Preis ist daher compPrice / rawVolume.
+        app.MapGet("/api/ores", () =>
+        {
+            static string SecOf(string group, string name)
+            {
+                if (group.Contains("Moon", StringComparison.OrdinalIgnoreCase)) return "MOON";
+                if (group.Contains("Ice", StringComparison.OrdinalIgnoreCase)) return "ICE";
+                if (group.Contains("Abyssal", StringComparison.OrdinalIgnoreCase)) return "TRIG";
+                string[] trig = { "Bezdnacine", "Rakovene", "Talassonite" };
+                foreach (var f in trig) if (name.Contains(f)) return "TRIG";
+                string[] hs = { "Veldspar", "Scordite", "Pyroxeres", "Plagioclase", "Omber", "Kernite" };
+                string[] ls = { "Jaspet", "Hemorphite", "Hedbergite", "Mordunium" };
+                string[] ns = { "Gneiss", "Dark Ochre", "Spodumain", "Crokite", "Bistot", "Arkonor",
+                                "Mercoxit", "Griemeer", "Hezorime", "Nocxite", "Ueasoh", "Ytirium" };
+                foreach (var f in hs) if (name.Contains(f)) return "HS";
+                foreach (var f in ls) if (name.Contains(f)) return "LS";
+                foreach (var f in ns) if (name.Contains(f)) return "NS";
+                return "";
+            }
+
+            // alles einlesen: Typen + Preise, dann Roh <-> Komprimiert über den Namen koppeln
+            var types = new List<(long Id, string Name, string Group, double Vol, bool Comp)>();
+            var prices = new Dictionary<long, (double? Sell, double? Buy)>();
+            string updated = null;
+            using (var c = Db.Open())
+            {
+                using (var cmd = Db.Cmd(c, "SELECT type_id,name,group_name,volume,is_compressed FROM ore_types"))
+                using (var r = cmd.ExecuteReader())
+                    while (r.Read())
+                        types.Add((r.GetInt64(0), r.GetString(1), r.GetString(2), r.GetDouble(3), r.GetInt64(4) == 1));
+                using (var cmd = Db.Cmd(c, "SELECT type_id,jita_sell,jita_buy,MAX(updated_utc) OVER () FROM ore_prices"))
+                using (var r = cmd.ExecuteReader())
+                    while (r.Read())
+                    {
+                        prices[r.GetInt64(0)] = (r.IsDBNull(1) ? null : r.GetDouble(1), r.IsDBNull(2) ? null : r.GetDouble(2));
+                        updated ??= r.IsDBNull(3) ? null : r.GetString(3);
+                    }
+            }
+
+            var compByName = types.Where(t => t.Comp).ToDictionary(t => t.Name, t => t);
+            var rows = new List<object>();
+            foreach (var t in types.Where(t => !t.Comp))
+            {
+                prices.TryGetValue(t.Id, out var rawP);
+                (double? Sell, double? Buy) compP = (null, null);
+                long? compId = null;
+                if (compByName.TryGetValue("Compressed " + t.Name, out var comp))
+                {
+                    compId = comp.Id;
+                    prices.TryGetValue(comp.Id, out compP);
+                }
+                rows.Add(new
+                {
+                    typeId = t.Id,
+                    name = t.Name,
+                    group = t.Group,
+                    sec = SecOf(t.Group, t.Name),
+                    volume = t.Vol,
+                    rawSell = rawP.Sell, rawBuy = rawP.Buy,
+                    compSell = compP.Sell, compBuy = compP.Buy,
+                    compTypeId = compId,
+                    m3RawSell = rawP.Sell / t.Vol, m3RawBuy = rawP.Buy / t.Vol,
+                    m3CompSell = compP.Sell / t.Vol, m3CompBuy = compP.Buy / t.Vol,
+                });
+            }
+            return Results.Ok(new { updated, rows });
+        });
+
         app.MapGet("/api/mining/today", (long charId) =>
         {
             var rep = Analytics.Mining(charId, Util.UtcNow.Date, Util.UtcNow);

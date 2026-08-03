@@ -116,6 +116,8 @@ public class SyncService : BackgroundService
         try
         {
             await SyncPrices(force);
+            await SyncOreCatalog(force);
+            await SyncOrePrices(force);
 
             foreach (var charId in EnabledCharacters())
             {
@@ -575,6 +577,93 @@ ON CONFLICT(type_id) DO UPDATE SET average_price=$a, adjusted_price=$j, updated_
         }
         tx.Commit();
         Db.MarkSync(0, "prices");
+    }
+
+    /// <summary>
+    /// Erz-Katalog aus ESI-Kategorie 25 (Asteroid): alle Familien inkl. Varianten,
+    /// Komprimierten, Monderz, Eis und Trig-Erzen — dynamisch, damit neue Erze von
+    /// CCP automatisch auftauchen. Läuft täglich; Typdetails liefern Name und Volumen.
+    /// </summary>
+    private async Task SyncOreCatalog(bool force)
+    {
+        var last = Db.LastSync(0, "orecatalog");
+        if (!force && last.HasValue && (Util.UtcNow - last.Value).TotalHours < 24) return;
+        // force gilt dem Nutzer-Klick "Jetzt abgleichen" — der Katalog ändert sich
+        // praktisch nie, also auch bei force höchstens alle 6 Stunden neu laufen
+        if (force && last.HasValue && (Util.UtcNow - last.Value).TotalHours < 6) return;
+
+        var cat = await _esi.GetAsync("/v1/universe/categories/25/");
+        if (!cat.Ok) { Db.MarkSync(0, "orecatalog", cat.Error); return; }
+
+        using var catDoc = JsonDocument.Parse(cat.Body);
+        foreach (var gEl in catDoc.RootElement.GetProperty("groups").EnumerateArray())
+        {
+            var gid = gEl.GetInt64();
+            var g = await _esi.GetAsync($"/v1/universe/groups/{gid}/");
+            if (!g.Ok) continue;
+            using var gDoc = JsonDocument.Parse(g.Body);
+            var groot = gDoc.RootElement;
+            if (groot.TryGetProperty("published", out var gp) && !gp.GetBoolean()) continue;
+            var gname = Str(groot, "name") ?? "?";
+            if (!groot.TryGetProperty("types", out var types)) continue;
+
+            foreach (var tEl in types.EnumerateArray())
+            {
+                var tid = tEl.GetInt64();
+                var tr = await _esi.GetAsync($"/v3/universe/types/{tid}/");
+                if (!tr.Ok) continue;
+                using var tDoc = JsonDocument.Parse(tr.Body);
+                var t = tDoc.RootElement;
+                if (!(t.TryGetProperty("published", out var pub) && pub.GetBoolean())) continue;
+                if (!t.TryGetProperty("market_group_id", out _)) continue;   // nicht handelbar
+                var vol = Num(t, "volume");
+                if (vol <= 0) continue;
+                var name = Str(t, "name") ?? $"Typ {tid}";
+
+                Db.Run(@"INSERT INTO ore_types(type_id,name,group_name,volume,is_compressed,updated_utc)
+                         VALUES($t,$n,$g,$v,$c,$u)
+                         ON CONFLICT(type_id) DO UPDATE SET name=$n, group_name=$g, volume=$v, is_compressed=$c, updated_utc=$u",
+                    ("$t", tid), ("$n", name), ("$g", gname), ("$v", vol),
+                    ("$c", name.StartsWith("Compressed ") ? 1 : 0), ("$u", Util.NowIso()));
+            }
+        }
+        Db.MarkSync(0, "orecatalog");
+    }
+
+    /// <summary>
+    /// Jita-Preise (The Forge): beste Verkaufs- und Kauforder je Erz-Typ, stündlich.
+    /// Ein Request pro Typ — dank ETag-Cache und 300s-Serverside-Cache günstig.
+    /// </summary>
+    private async Task SyncOrePrices(bool force)
+    {
+        var last = Db.LastSync(0, "oreprices");
+        if (!force && last.HasValue && (Util.UtcNow - last.Value).TotalHours < 1) return;
+
+        var ids = new List<long>();
+        using (var c = Db.Open())
+        using (var cmd = Db.Cmd(c, "SELECT type_id FROM ore_types"))
+        using (var rd = cmd.ExecuteReader())
+            while (rd.Read()) ids.Add(rd.GetInt64(0));
+        if (ids.Count == 0) return;
+
+        foreach (var id in ids)
+        {
+            var r = await _esi.GetAsync($"/v1/markets/10000002/orders/?type_id={id}&order_type=all&page=1");
+            if (!r.Ok) continue;
+            using var doc = JsonDocument.Parse(r.Body);
+            double? sell = null, buy = null;
+            foreach (var o in doc.RootElement.EnumerateArray())
+            {
+                var price = Num(o, "price");
+                var isBuy = o.TryGetProperty("is_buy_order", out var b) && b.GetBoolean();
+                if (isBuy) { if (buy == null || price > buy) buy = price; }
+                else { if (sell == null || price < sell) sell = price; }
+            }
+            Db.Run(@"INSERT INTO ore_prices(type_id,jita_sell,jita_buy,updated_utc) VALUES($t,$s,$b,$u)
+                     ON CONFLICT(type_id) DO UPDATE SET jita_sell=$s, jita_buy=$b, updated_utc=$u",
+                ("$t", id), ("$s", (object)sell ?? DBNull.Value), ("$b", (object)buy ?? DBNull.Value), ("$u", Util.NowIso()));
+        }
+        Db.MarkSync(0, "oreprices");
     }
 
     /// <summary>Unbekannte IDs in Namen auflösen — /universe/names/ nimmt bis zu 1000 auf einmal.</summary>

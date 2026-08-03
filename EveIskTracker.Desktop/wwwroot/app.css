@@ -165,6 +165,13 @@ code{background:#0d1420;padding:2px 7px;border-radius:5px;font-size:12px;color:v
 .tag-outline{border:1px solid var(--color-accent);color:var(--color-accent);background:transparent}
 .tag-off{border:1px solid var(--color-neutral-600);color:var(--color-neutral-400);background:transparent}
 .tag.click{cursor:pointer;user-select:none}
+/* Sicherheitsklassen der Erze (Ores-Screen) */
+.sec-HS{background:rgba(70,211,138,.15);color:#6ee7a8}
+.sec-LS{background:rgba(240,182,77,.15);color:#f0c56d}
+.sec-NS{background:rgba(242,100,122,.15);color:#f78ba0}
+.sec-MOON{background:rgba(77,163,255,.15);color:#8dc2ff}
+.sec-ICE{background:rgba(141,194,255,.12);color:#b6d8ff}
+.sec-TRIG{background:rgba(179,157,242,.15);color:#c9b8f5}
 .tag.click:hover{filter:brightness(1.25)}
 .tagrow{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
 

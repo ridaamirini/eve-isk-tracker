@@ -29,6 +29,7 @@
       <div class="nav-item on" data-screen="dash"><i class="ph ph-squares-four"></i>Dashboard</div>
       <div class="nav-item" data-screen="wallet"><i class="ph ph-wallet"></i>Wallet</div>
       <div class="nav-item" data-screen="reports"><i class="ph ph-chart-bar"></i>Reports</div>
+      <div class="nav-item" data-screen="ores"><i class="ph ph-diamonds-four"></i>Ores</div>
       <div class="nav-item" data-screen="overlay"><i class="ph ph-broadcast"></i>Stream Overlay</div>
       <div class="nav-item" data-screen="settings"><i class="ph ph-gear-six"></i>Settings</div>
     </nav>
@@ -171,6 +172,50 @@
       <div id="tab-industry" class="tabpanel hidden"></div>
       <div id="tab-kills" class="tabpanel hidden"></div>
       <div id="tab-sessions" class="tabpanel hidden"></div>
+    </div>
+
+    <!-- ========== Ores (ISK/m³-Ranking, Jita-Preise) ========== -->
+    <div class="screen hidden" id="screen-ores">
+      <div class="page-head">
+        <h1>Ores</h1>
+        <span class="head-note" data-i18n="oresSub">ISK pro m³ · Jita-Preise (The Forge)</span>
+        <span class="head-note" id="oresUpdated" style="margin-left:auto"></span>
+      </div>
+      <div class="head-rule"></div>
+
+      <div class="row" style="margin-bottom:16px;flex-wrap:wrap">
+        <div class="seg" id="oresSec">
+          <span class="seg-opt on" data-f="all" data-i18n="oresAll">Alle</span>
+          <span class="seg-opt" data-f="HS">HS</span>
+          <span class="seg-opt" data-f="LS">LS</span>
+          <span class="seg-opt" data-f="NS">NS</span>
+          <span class="seg-opt" data-f="MOON" data-i18n="oresMoon">Mond</span>
+          <span class="seg-opt" data-f="ICE" data-i18n="oresIce">Eis</span>
+          <span class="seg-opt" data-f="TRIG">Trig</span>
+        </div>
+        <div class="seg" style="margin-left:auto" id="oresBasis">
+          <span class="seg-opt on" data-b="comp" data-i18n="oresComp">Komprimiert</span>
+          <span class="seg-opt" data-b="raw" data-i18n="oresRaw">Roh</span>
+        </div>
+        <div class="seg" id="oresSide">
+          <span class="seg-opt on" data-s="sell">Sell</span>
+          <span class="seg-opt" data-s="buy">Buy</span>
+        </div>
+      </div>
+
+      <div class="card" style="padding:4px 0">
+        <div class="tablewrap"><table class="table">
+          <thead><tr>
+            <th style="width:36px">#</th>
+            <th data-i18n="thOre">Erz</th>
+            <th>Sec</th>
+            <th class="num" data-i18n="thVolUnit">m³/Einh.</th>
+            <th class="num" data-i18n="thUnitPrice">Preis/Einheit</th>
+            <th class="num" style="width:32%">ISK/m³</th>
+          </tr></thead>
+          <tbody id="oresRows"><tr><td colspan="6" class="empty" data-i18n="oresEmpty">Noch keine Preisdaten — der erste Abruf läuft automatisch und dauert ein paar Minuten.</td></tr></tbody>
+        </table></div>
+      </div>
     </div>
 
     <!-- ========== Stream Overlay ========== -->

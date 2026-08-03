@@ -27,6 +27,9 @@ itself still shows you.
   **kills & losses with zKillboard values and links**, session history
 - **Sessions** — start/stop with one click, live ISK delta and ISK/h, mining attribution
   to the session window
+- **Ore chart** — every mineable ore (belt, moon, ice, Triglavian, incl. all variants and
+  compressed forms, pulled dynamically from ESI) ranked by **ISK per m³** with live Jita
+  buy/sell prices, filterable by security band — inspired by ore.cerlestes.de
 - **Stream widget** — 420 × 240 px browser source styled like classic session HUDs:
   timer · session ISK · ISK/h · bounties · missions · kills · destroyed · mining · wallet,
   each tile toggleable, optional character portrait & name in the header, fully
@@ -40,6 +43,7 @@ itself still shows you.
 
 ![Reports](docs/reports.png)
 ![Kills](docs/kills.png)
+![Ore chart](docs/ores.png)
 ![Stream Overlay](docs/overlay.png)
 
 ## Getting started

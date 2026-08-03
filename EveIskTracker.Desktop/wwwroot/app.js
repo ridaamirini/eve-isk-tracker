@@ -134,6 +134,19 @@ const L = {
   autoStopName: ['Wenn der EVE-Client schließt', 'When the EVE client closes'],
   autoStopNote: ['Beendet offene Sessions, wenn der EVE-Client (exefile.exe) beim App-Start nicht läuft oder im Betrieb länger als 3 Minuten geschlossen ist.',
                  'Ends open sessions when the EVE client (exefile.exe) is not running at app start, or has been closed for more than 3 minutes.'],
+
+  // Ores
+  oresSub: ['ISK pro m³ · Jita-Preise (The Forge)', 'ISK per m³ · Jita prices (The Forge)'],
+  oresAll: ['Alle', 'All'],
+  oresMoon: ['Mond', 'Moon'],
+  oresIce: ['Eis', 'Ice'],
+  oresComp: ['Komprimiert', 'Compressed'],
+  oresRaw: ['Roh', 'Raw'],
+  thVolUnit: ['m³/Einh.', 'm³/unit'],
+  thUnitPrice: ['Preis/Einheit', 'Price/unit'],
+  oresEmpty: ['Noch keine Preisdaten — der erste Abruf läuft automatisch und dauert ein paar Minuten.',
+              'No price data yet — the first fetch runs automatically and takes a few minutes.'],
+  oresNoPrice: ['keine Order', 'no orders'],
   contactLabel: ['Kontakt (E-Mail oder Charaktername)', 'Contact (e-mail or character name)'],
   regNote: ['Kein Passwort, kein Client-Secret: der Login läuft über CCPs eigene Seite, hier liegt nur ein Windows-verschlüsseltes Zugriffstoken.',
             'No password, no client secret: sign-in happens on CCP\'s own page; only a Windows-encrypted access token is stored here.'],
@@ -683,6 +696,64 @@ async function loadSessionHistory() {
     </table></div></div>`;
 }
 
+// ---------- Ores (ISK/m³-Ranking) ----------
+
+S.oresSec = 'all'; S.oresBasis = 'comp'; S.oresSide = 'sell'; S.oresData = null;
+
+async function loadOres() {
+  const d = await api('/api/ores');
+  S.oresData = d;
+  $('oresUpdated').textContent = d.updated ? `${t('asOf')} ${fmtTime(d.updated)}` : '';
+  renderOres();
+}
+
+function renderOres() {
+  const d = S.oresData;
+  if (!d || !d.rows.length) return;
+
+  const key = 'm3' + (S.oresBasis === 'comp' ? 'Comp' : 'Raw') + (S.oresSide === 'sell' ? 'Sell' : 'Buy');
+  const unitKey = (S.oresBasis === 'comp' ? 'comp' : 'raw') + (S.oresSide === 'sell' ? 'Sell' : 'Buy');
+  let rows = d.rows.filter(r => S.oresSec === 'all' || r.sec === S.oresSec);
+  rows = rows.filter(r => r[key] != null).sort((a, b) => b[key] - a[key])
+             .concat(rows.filter(r => r[key] == null));
+  const max = rows.length && rows[0][key] != null ? rows[0][key] : 1;
+
+  const pfmt = v => v == null ? `<span class="head-note">${t('oresNoPrice')}</span>`
+    : v.toLocaleString(NUMLOC(), { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  $('oresRows').innerHTML = rows.map((r, i) => `
+    <tr>
+      <td class="head-note">${r[key] != null ? i + 1 : '–'}</td>
+      <td>${esc(r.name)}<div class="head-note" style="font-size:11px">${esc(r.group)}</div></td>
+      <td>${r.sec ? `<span class="tag sec-${r.sec}">${r.sec}</span>` : ''}</td>
+      <td class="num head-note">${r.volume.toLocaleString(NUMLOC(), { maximumFractionDigits: 3 })}</td>
+      <td class="num mono">${pfmt(r[unitKey])}</td>
+      <td class="num">
+        <div class="mono" style="font-weight:600">${r[key] != null ? Math.round(r[key]).toLocaleString(NUMLOC()) : '—'}</div>
+        <div class="bar" style="margin-top:4px"><div class="bar-fill" style="width:${r[key] != null ? Math.max(1, Math.round(r[key] / max * 100)) : 0}%"></div></div>
+      </td>
+    </tr>`).join('');
+}
+
+$('oresSec').addEventListener('click', e => {
+  const b = e.target.closest('.seg-opt'); if (!b) return;
+  S.oresSec = b.dataset.f;
+  document.querySelectorAll('#oresSec .seg-opt').forEach(x => x.classList.toggle('on', x === b));
+  renderOres();
+});
+$('oresBasis').addEventListener('click', e => {
+  const b = e.target.closest('.seg-opt'); if (!b) return;
+  S.oresBasis = b.dataset.b;
+  document.querySelectorAll('#oresBasis .seg-opt').forEach(x => x.classList.toggle('on', x === b));
+  renderOres();
+});
+$('oresSide').addEventListener('click', e => {
+  const b = e.target.closest('.seg-opt'); if (!b) return;
+  S.oresSide = b.dataset.s;
+  document.querySelectorAll('#oresSide .seg-opt').forEach(x => x.classList.toggle('on', x === b));
+  renderOres();
+});
+
 // ---------- Overlay-Screen ----------
 
 const metricDefs = () => [
@@ -775,7 +846,7 @@ $('metricToggles').addEventListener('click', async e => {
 
 // ---------- Navigation & Ereignisse ----------
 
-const loaders = { dash: loadDash, wallet: loadWallet, reports: loadReports, overlay: loadOverlayScreen, settings: async () => {} };
+const loaders = { dash: loadDash, wallet: loadWallet, reports: loadReports, ores: loadOres, overlay: loadOverlayScreen, settings: async () => {} };
 
 async function showScreen(key) {
   S.screen = key;

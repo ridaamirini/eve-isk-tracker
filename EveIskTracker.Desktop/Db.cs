@@ -306,6 +306,24 @@ CREATE TABLE IF NOT EXISTS names (
     category TEXT
 );
 
+-- Erz-Katalog (dynamisch aus ESI-Kategorie 25 'Asteroid', täglich aktualisiert)
+CREATE TABLE IF NOT EXISTS ore_types (
+    type_id       INTEGER PRIMARY KEY,
+    name          TEXT,
+    group_name    TEXT,
+    volume        REAL,
+    is_compressed INTEGER NOT NULL DEFAULT 0,
+    updated_utc   TEXT
+);
+
+-- Jita-Preise (The Forge, beste Sell-/Buy-Order), stündlich
+CREATE TABLE IF NOT EXISTS ore_prices (
+    type_id     INTEGER PRIMARY KEY,
+    jita_sell   REAL,
+    jita_buy    REAL,
+    updated_utc TEXT
+);
+
 -- Killmails: ID+Hash von ESI, ISK-Wert von zKillboard nachgeschlagen
 CREATE TABLE IF NOT EXISTS kills (
     character_id        INTEGER NOT NULL,
