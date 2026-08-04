@@ -17,11 +17,14 @@ public static class Db
     {
         Directory.CreateDirectory(dataDir);
         Path = System.IO.Path.Combine(dataDir, "eveisk.db");
+        // KEIN Cache=Shared: der Shared-Cache-Altmodus hat beim Windows-Boot die
+        // gefüllte Datei als leer wahrgenommen (Charaktere weg, Login-Aufforderung),
+        // während private Verbindungen dieselbe Datei korrekt lasen. Privater Cache
+        // ist der von SQLite empfohlene Standard.
         _connStr = new SqliteConnectionStringBuilder
         {
             DataSource = Path,
             Mode = SqliteOpenMode.ReadWriteCreate,
-            Cache = SqliteCacheMode.Shared,
         }.ToString();
 
         // Selbstheilung mit Augenmaß: Nur ECHTE Korruption (SQLITE_CORRUPT/NOTADB)
@@ -30,14 +33,24 @@ public static class Db
         // und wird mit Wartezyklen überbrückt, sonst würde eine gesunde Datenbank
         // fälschlich durch ein älteres Backup ersetzt.
         var healthy = false;
-        for (var attempt = 0; attempt < 5 && !healthy; attempt++)
+        for (var attempt = 0; attempt < 6 && !healthy; attempt++)
         {
             var state = TryPrepare();
-            if (state == DbState.Ok) { healthy = true; break; }
+            if (state == DbState.Ok)
+            {
+                // Phantom-Detektor: Beim frühen Boot (Virenscanner) kann eine Verbindung
+                // die volle Datei als leer wahrnehmen — die App liefe dann mit leerer
+                // Ansicht weiter und verleitete zum unnötigen Neu-Login. Sieht die
+                // Verbindung deutlich weniger, als auf der Platte liegt: neu ansetzen.
+                if (ConnectionSeesWholeFile()) { healthy = true; break; }
+                SqliteConnection.ClearAllPools();
+                Thread.Sleep(2000);
+                continue;
+            }
             if (state == DbState.Corrupt)
             {
                 RestoreFromBackup();
-                if (TryPrepare() == DbState.Ok) { healthy = true; break; }
+                if (TryPrepare() == DbState.Ok && ConnectionSeesWholeFile()) { healthy = true; break; }
                 throw new InvalidOperationException(
                     "Datenbank ist beschädigt und kein brauchbares Backup vorhanden. " +
                     "Bitte die Dateien unter " + dataDir + " prüfen.");
@@ -47,14 +60,35 @@ public static class Db
         }
         if (!healthy)
             throw new InvalidOperationException(
-                "Datenbank ist dauerhaft nicht zugreifbar (gesperrt?). " +
-                "Läuft ein Virenscan auf " + dataDir + "?");
+                "Die Datenbank ist momentan nicht zuverlässig lesbar (läuft ein Virenscan?). " +
+                "Bitte die App in einer Minute erneut starten — die Daten sind unversehrt in " + dataDir + ".");
 
         Checkpoint();
         BackupNow();   // frischer Schnappschuss bei jedem Start (2 Generationen)
     }
 
     private enum DbState { Ok, Corrupt, Transient }
+
+    /// <summary>
+    /// Vergleicht, wie groß die Datenbank aus Sicht der Verbindung ist (page_count ×
+    /// page_size) mit der echten Dateigröße. Sieht die Verbindung nur einen Bruchteil,
+    /// hat sie beim Öffnen ins Leere gelesen (beobachtet direkt nach Windows-Boot).
+    /// </summary>
+    private static bool ConnectionSeesWholeFile()
+    {
+        try
+        {
+            using var c = Open();
+            long pageCount, pageSize;
+            using (var pc = Cmd(c, "PRAGMA page_count;")) pageCount = Convert.ToInt64(pc.ExecuteScalar());
+            using (var ps = Cmd(c, "PRAGMA page_size;")) pageSize = Convert.ToInt64(ps.ExecuteScalar());
+            var viewBytes = pageCount * pageSize;
+            var diskBytes = new FileInfo(Path).Length;
+            // frische Mini-Datenbanken sind legitim; verdächtig ist nur: Platte voll, Sicht leer
+            return diskBytes <= 512 * 1024 || viewBytes >= diskBytes / 3;
+        }
+        catch { return false; }
+    }
 
     /// <summary>Pragmas, Integritätsprüfung, Schema — mit ehrlicher Fehlerdiagnose.</summary>
     private static DbState TryPrepare()
