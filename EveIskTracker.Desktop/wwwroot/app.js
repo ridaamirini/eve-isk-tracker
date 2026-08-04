@@ -147,6 +147,7 @@ const L = {
   oresEmpty: ['Noch keine Preisdaten — der erste Abruf läuft automatisch und dauert ein paar Minuten.',
               'No price data yet — the first fetch runs automatically and takes a few minutes.'],
   oresNoPrice: ['keine Order', 'no orders'],
+  kLinks: ['NÜTZLICHE WEBSITES', 'USEFUL WEBSITES'],
   contactLabel: ['Kontakt (E-Mail oder Charaktername)', 'Contact (e-mail or character name)'],
   regNote: ['Kein Passwort, kein Client-Secret: der Login läuft über CCPs eigene Seite, hier liegt nur ein Windows-verschlüsseltes Zugriffstoken.',
             'No password, no client secret: sign-in happens on CCP\'s own page; only a Windows-encrypted access token is stored here.'],
@@ -189,11 +190,43 @@ const REF_EN = {
 };
 const refLabel = de => LANG === 'en' ? (REF_EN[de] || de) : de;
 
+// Kuratierte externe Links (öffnen im System-Browser); desc = [de, en]
+const USEFUL_LINKS = [
+  { name: 'zKillboard', url: 'https://zkillboard.com/',
+    desc: ['Killboard — Kills, Verluste und Statistiken aller Piloten', 'Killboard — kills, losses and stats for every pilot'] },
+  { name: 'Cerlestes Ore Table', url: 'https://ore.cerlestes.de/ore',
+    desc: ['Die klassische Erz-Tabelle — Vorbild für den Ores-Screen', 'The classic ore table — inspiration for the Ores screen'] },
+  { name: 'EVE Ref', url: 'https://everef.net/',
+    desc: ['Item-Datenbank mit Industrie-, Markt- und LP-Rechnern', 'Item database with industry, market and LP calculators'] },
+  { name: 'DOTLAN EveMaps', url: 'https://evemaps.dotlan.net/',
+    desc: ['Karten, Routenplanung, Sovereignty und System-Statistiken', 'Maps, route planning, sovereignty and system stats'] },
+  { name: 'Fuzzwork', url: 'https://www.fuzzwork.co.uk/',
+    desc: ['Marktdaten-API, Blueprint- und Reprocessing-Rechner', 'Market data API, blueprint and reprocessing calculators'] },
+  { name: 'EVE Tycoon', url: 'https://evetycoon.com/',
+    desc: ['Markt-Browser und Profit-Tracking für Trader', 'Market browser and profit tracking for traders'] },
+  { name: 'EVE University Wiki', url: 'https://wiki.eveuniversity.org/',
+    desc: ['Das umfassendste Spieler-Wiki — Guides zu allem', 'The most comprehensive player wiki — guides for everything'] },
+  { name: 'pyfa', url: 'https://github.com/pyfa-org/Pyfa',
+    desc: ['Fitting-Tool zum Planen von Schiffs-Ausrüstungen', 'Fitting tool for planning ship setups'] },
+];
+
+function renderUsefulLinks() {
+  $('usefulLinks').innerHTML = USEFUL_LINKS.map(l => `
+    <div class="list-row">
+      <i class="ph ph-arrow-square-out"></i>
+      <div class="list-main">
+        <div class="list-title"><a href="${l.url}" target="_blank" rel="noopener">${esc(l.name)}</a></div>
+        <div class="list-sub">${esc(l.desc[LANG === 'en' ? 1 : 0])}</div>
+      </div>
+    </div>`).join('');
+}
+
 function applyLang() {
   document.documentElement.lang = LANG;
   document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
   document.querySelectorAll('[data-i18n-html]').forEach(el => { el.innerHTML = t(el.dataset.i18nHtml); });
   document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = t(el.dataset.i18nPh); });
+  renderUsefulLinks();
 }
 
 async function api(path, opts) {

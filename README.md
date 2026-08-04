@@ -136,6 +136,18 @@ OAuth sign-in needs the `localhost` callback.
 - **Kill values come from zKillboard** (one request per new kill). If zKillboard is
   unreachable, the kill is still listed, just without a value.
 
+## Useful links
+
+The Settings screen also links these community resources:
+[zKillboard](https://zkillboard.com/) ·
+[Cerlestes Ore Table](https://ore.cerlestes.de/ore) ·
+[EVE Ref](https://everef.net/) ·
+[DOTLAN EveMaps](https://evemaps.dotlan.net/) ·
+[Fuzzwork](https://www.fuzzwork.co.uk/) ·
+[EVE Tycoon](https://evetycoon.com/) ·
+[EVE University Wiki](https://wiki.eveuniversity.org/) ·
+[pyfa](https://github.com/pyfa-org/Pyfa)
+
 ## Acknowledgements
 
 - [EVE Online / CCP Games](https://www.eveonline.com/) — ESI API, SSO and image server.
