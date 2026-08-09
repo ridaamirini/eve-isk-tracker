@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>EVE ISK Tracker — DPS-Widget</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+  /* Eigenständiger DPS-Graph als Browser-Quelle (420×150), frei platzierbar —
+     dieselben Kurven wie im Game-Overlay, im Stil des Stream-Widgets. */
+  :root{
+    --bg:#0a0f16; --text:#e4ebf4; --accent:#4da3ff;
+    --accent-200:#b6d8ff; --accent-800:#1c3d61;
+    --n400:#99a4b5; --n700:#464f5e; --red:#f2647a;
+  }
+  html,body{margin:0;padding:0;background:transparent;overflow:hidden;width:420px;height:150px}
+  body{position:relative;font-family:'IBM Plex Sans',sans-serif;color:var(--text)}
+  #w{
+    position:absolute;top:4px;left:4px;right:4px;
+    border-radius:8px;border:1px solid var(--accent-800);
+    background:color-mix(in srgb,var(--bg) 88%,transparent);
+    box-shadow:0 0 0 1px rgba(44,51,63,.6),0 16px 40px rgba(0,0,0,.65),0 0 24px color-mix(in srgb,var(--accent) 15%,transparent);
+    opacity:0;transition:opacity .4s ease;
+  }
+  #w.on{opacity:1}
+  .head{
+    display:flex;align-items:center;gap:8px;padding:0 12px;height:24px;
+    border-bottom:1px solid color-mix(in srgb,var(--accent) 30%,transparent);
+  }
+  .dot{width:6px;height:6px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent)}
+  .title{font-size:10px;letter-spacing:.16em;color:var(--accent-200)}
+  .char{margin-left:auto;font-size:10px;color:var(--n400)}
+  .body{padding:6px 12px 10px}
+  .bar{display:flex;justify-content:space-between;align-items:baseline;
+       font-size:9px;letter-spacing:.12em;color:var(--n400);margin-bottom:3px}
+  .bar b{font-family:'Chakra Petch',sans-serif;font-size:14px;font-weight:600;
+         color:var(--accent-200);font-variant-numeric:tabular-nums}
+  .bar .in b{color:var(--red)}
+  canvas{display:block;width:100%;height:72px}
+</style>
+</head>
+<body>
+
+<div id="w">
+  <div class="head">
+    <span class="dot"></span>
+    <span class="title">COMBAT · LIVE</span>
+    <span class="char" id="char"></span>
+  </div>
+  <div class="body">
+    <div class="bar">
+      <span><span id="outL">ERTEILT</span> <b id="outV">0</b><span style="font-size:9px;color:var(--n400)"> DPS</span></span>
+      <span class="in"><span id="inL">ERLITTEN</span> <b id="inV">0</b><span style="font-size:9px;color:var(--n400)"> DPS</span></span>
+    </div>
+    <canvas id="cv"></canvas>
+  </div>
+</div>
+
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const WINDOW = 120, SMOOTH = 10;
+let charId = new URLSearchParams(location.search).get('charId');
+
+function fmt(v){
+  const a = Math.abs(v);
+  if (a >= 1e6) return (a/1e6).toFixed(1)+'M';
+  if (a >= 1e3) return (a/1e3).toFixed(1)+'K';
+  return Math.round(a).toString();
+}
+
+// Ohne charId in der URL: erster aktiver Charakter der App
+async function resolveChar(){
+  if (charId) return;
+  try {
+    const st = await (await fetch('/api/status')).json();
+    const c = (st.characters || []).find(x => x.enabled) || (st.characters || [])[0];
+    if (c) charId = c.characterId;
+  } catch(e){}
+}
+
+async function tick(){
+  const w = $('w');
+  if (!charId){ await resolveChar(); if (!charId){ w.classList.remove('on'); return; } }
+  let d;
+  try {
+    const r = await fetch(`/api/dps?charId=${encodeURIComponent(charId)}&window=${WINDOW + SMOOTH + 1}`);
+    if (!r.ok) throw 0;
+    d = await r.json();
+  } catch(e){
+    // App nicht erreichbar: ausblenden statt Fehler im Stream zeigen
+    w.classList.remove('on');
+    return;
+  }
+
+  const en = (d.lang || 'de') === 'en';
+  $('outL').textContent = en ? 'DEALT' : 'ERTEILT';
+  $('inL').textContent = en ? 'TAKEN' : 'ERLITTEN';
+  $('char').textContent = d.listener || '';
+
+  // angebrochene letzte Sekunde weglassen — sie würde die Kurve künstlich drücken
+  const dealt = d.dealt.slice(0, -1), taken = d.taken.slice(0, -1);
+  const avg = a => a.slice(-SMOOTH).reduce((x, y) => x + y, 0) / SMOOTH;
+  $('outV').textContent = fmt(avg(dealt));
+  $('inV').textContent = fmt(avg(taken));
+  draw(dealt.slice(-WINDOW), taken.slice(-WINDOW));
+  w.classList.add('on');
+}
+
+function draw(dealt, taken){
+  const cv = $('cv');
+  const dpr = window.devicePixelRatio || 1;
+  const W = cv.clientWidth, H = cv.clientHeight;
+  if (!W) return;
+  if (cv.width !== W * dpr || cv.height !== H * dpr){ cv.width = W * dpr; cv.height = H * dpr; }
+  const g = cv.getContext('2d');
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.clearRect(0, 0, W, H);
+
+  const max = Math.max(10, ...dealt, ...taken);
+  const top = 2, bottom = H - 2;
+  const X = i => i / (WINDOW - 1) * W;
+  const Y = v => top + (1 - v / max) * (bottom - top);
+
+  g.strokeStyle = 'rgba(70,79,94,.5)'; g.lineWidth = 1;
+  g.beginPath(); g.moveTo(0, Y(max / 2)); g.lineTo(W, Y(max / 2)); g.stroke();
+  g.fillStyle = 'rgba(153,164,181,.8)'; g.font = '9px IBM Plex Sans, sans-serif';
+  g.fillText(fmt(max), 3, 10);
+
+  const line = (arr, color, fill) => {
+    g.beginPath();
+    arr.forEach((v, i) => { const x = X(i), y = Y(v); i ? g.lineTo(x, y) : g.moveTo(x, y); });
+    g.strokeStyle = color; g.lineWidth = 1.6; g.stroke();
+    g.lineTo(W, bottom); g.lineTo(0, bottom); g.closePath();
+    g.fillStyle = fill; g.fill();
+  };
+  line(taken, 'rgba(242,100,122,.95)', 'rgba(242,100,122,.10)');
+  line(dealt, 'rgba(77,163,255,.95)', 'rgba(77,163,255,.12)');
+}
+
+tick();
+setInterval(tick, 1000);   // nur die lokale App, kein Verkehr nach außen
+</script>
+</body>
+</html>

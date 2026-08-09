@@ -800,6 +800,7 @@ WHERE l.character_id=$c AND l.lp > 0 ORDER BY l.lp DESC", ("$c", charId)))
         app.MapGet("/", () => ServeEmbedded("index.html"));
         app.MapGet("/overlay", () => ServeEmbedded("overlay.html"));
         app.MapGet("/gameoverlay", () => ServeEmbedded("gameoverlay.html"));
+        app.MapGet("/dpswidget", () => ServeEmbedded("dpswidget.html"));
         app.MapGet("/{file}", (string file) => ServeEmbedded(file));
     }
 

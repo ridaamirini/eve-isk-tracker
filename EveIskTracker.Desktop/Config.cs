@@ -48,8 +48,9 @@ public static class Config
         set => Db.SetKv("overlay_txt", value?.Trim());
     }
 
-    /// <summary>Reihenfolge hier = Anzeige-Reihenfolge im Widget (nach dem Vorbild klassischer Session-HUDs).</summary>
-    public static readonly string[] KnownMetrics = { "time", "session", "rate", "bounties", "missions", "kills", "destroyed", "mining", "wallet" };
+    /// <summary>Reihenfolge hier = Anzeige-Reihenfolge im Widget (nach dem Vorbild klassischer
+    /// Session-HUDs); "dps" ist keine Kachel, sondern der Live-Graph unter den Kacheln.</summary>
+    public static readonly string[] KnownMetrics = { "time", "session", "rate", "bounties", "missions", "kills", "destroyed", "mining", "wallet", "dps" };
 
     /// <summary>Welche Werte das Stream-Widget zeigt — Komma-Liste, Reihenfolge fest.</summary>
     public static string OverlayMetrics

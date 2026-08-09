@@ -277,7 +277,8 @@
     <div class="screen hidden" id="screen-overlay">
       <div class="page-head">
         <h1>Stream Overlay</h1>
-        <span class="head-note" data-i18n="overlaySub">Browser-Quelle für Streamlabs/OBS · 420 × 240 px</span>
+        <span class="head-note" data-i18n="overlaySub">Browser-Quelle für Streamlabs/OBS</span>
+        <span class="head-note" id="recSize" style="color:var(--color-accent-200)"></span>
         <button class="btn btn-primary" style="margin-left:auto" id="btnCopyUrl"><i class="ph ph-copy"></i> Copy source URL</button>
       </div>
       <div class="head-rule"></div>
@@ -310,8 +311,12 @@
               <div class="head-note" data-i18n="updNote2">Werte ändern sich nur bei echten Kontostand-Updates (~alle 2 min);
                 ISK/h wird höchstens alle 5 min neu berechnet, damit im Stream nichts kriecht</div>
             </div>
-            <div class="field"><label>Source URL</label>
+            <div class="field"><label>Source URL <span class="head-note" id="srcSize"></span></label>
               <input class="input" id="srcUrl" readonly value="–">
+            </div>
+            <div class="field"><label><span data-i18n="dpsSrcLabel">DPS-Graph als eigene Quelle</span> <span class="head-note">420 × 150</span></label>
+              <input class="input" id="dpsSrcUrl" readonly value="–">
+              <div class="head-note" style="margin-top:6px" data-i18n="dpsSrcNote">Eigene Browser-Quelle, frei in der Szene platzierbar — dieselben Live-Kurven wie im Game-Overlay.</div>
             </div>
             <div class="field"><label data-i18n="txtLabel">Alternative: Textdatei für Textquellen</label>
               <input class="input" id="overlayTextPath" placeholder="C:\Users\...\isk.txt">

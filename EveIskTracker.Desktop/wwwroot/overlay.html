@@ -45,6 +45,14 @@
   .value.pos{color:#4dd398}
   .value.neg{color:#f2647a}
   .sep{width:1px;background:linear-gradient(180deg,transparent,var(--n700),transparent)}
+  /* DPS-Graph (optionale "Kachel": Live-Kurven aus dem Combat-Log) */
+  #dpswrap{display:none;padding:6px 12px 10px}
+  .dpsbar{display:flex;justify-content:space-between;align-items:baseline;
+          font-size:9px;letter-spacing:.12em;color:var(--n400);margin-bottom:3px}
+  .dpsbar b{font-family:'Chakra Petch',sans-serif;font-size:13px;font-weight:600;
+            color:var(--accent-200);font-variant-numeric:tabular-nums}
+  .dpsbar .in b{color:#f2647a}
+  #dpsCv{display:block;width:100%;height:62px}
 </style>
 </head>
 <body>
@@ -56,6 +64,13 @@
     <span class="char" id="char">–</span>
   </div>
   <div id="rows"></div>
+  <div id="dpswrap">
+    <div class="dpsbar">
+      <span><span id="dpsOutL">ERTEILT</span> <b id="dpsOutV">0</b></span>
+      <span class="in"><span id="dpsInL">ERLITTEN</span> <b id="dpsInV">0</b></span>
+    </div>
+    <canvas id="dpsCv"></canvas>
+  </div>
 </div>
 
 <script>
@@ -119,9 +134,13 @@ async function tick(){
     if (!r.ok) throw 0;
     const d = await r.json();
 
-    const keys = (d.metrics || []).filter(k => METRICS[k]);
-    const list = keys.length ? keys : Object.keys(METRICS);
-    const metricsKey = list.join(',');
+    // "dps" ist keine Kachel, sondern der Graph unter den Reihen
+    const keys = (d.metrics || []).filter(k => METRICS[k] || k === 'dps');
+    const all = keys.length ? keys : Object.keys(METRICS);
+    dpsOn = all.includes('dps');
+    document.getElementById('dpswrap').style.display = dpsOn ? 'block' : 'none';
+    const list = all.filter(k => k !== 'dps');
+    const metricsKey = all.join(',');
     const now = Date.now();
 
     if (d.rateHold) rateHoldMs = d.rateHold * 1000;
@@ -144,8 +163,10 @@ async function tick(){
       document.getElementById('char').innerHTML = d.showChar
         ? `<img src="https://images.evetech.net/characters/${d.charId}/portrait?size=64" alt="" onerror="this.remove()">${(d.name || '').replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}`
         : '';
-      const rows = chunkRows(list);
-      const cellW = `width:calc(${(100 / rows[0].length).toFixed(3)}% - 1px)`;
+      document.getElementById('dpsOutL').textContent = lx === 1 ? 'DEALT' : 'ERTEILT';
+      document.getElementById('dpsInL').textContent = lx === 1 ? 'TAKEN' : 'ERLITTEN';
+      const rows = list.length ? chunkRows(list) : [];
+      const cellW = rows.length ? `width:calc(${(100 / rows[0].length).toFixed(3)}% - 1px)` : '';
       document.getElementById('rows').innerHTML = rows.map(row =>
         '<div class="row">' + row.map(k => {
           const v = k === 'rate' ? last.rate : METRICS[k].render(d);
@@ -164,6 +185,59 @@ async function tick(){
     w.classList.remove('on');
   }
 }
+
+// ---- DPS-Graph (optional): Live-Kurven aus dem Combat-Log, 1s-Takt ----
+// Gepollt wird nur die lokale App; deren Log-Mitleser schläft automatisch ein,
+// sobald das Widget (bzw. die Option) nicht mehr aktiv ist.
+let dpsOn = false;
+const DPS_WINDOW = 120, DPS_SMOOTH = 10;
+
+async function dpsTick(){
+  if (!dpsOn || !charId) return;
+  let d;
+  try {
+    const r = await fetch(`/api/dps?charId=${encodeURIComponent(charId)}&window=${DPS_WINDOW + DPS_SMOOTH + 1}`);
+    if (!r.ok) return;
+    d = await r.json();
+  } catch(e){ return; }
+
+  // letzte (angebrochene) Sekunde weglassen, sie würde die Kurve künstlich drücken
+  const dealt = d.dealt.slice(0, -1), taken = d.taken.slice(0, -1);
+  const avg = a => a.slice(-DPS_SMOOTH).reduce((x, y) => x + y, 0) / DPS_SMOOTH;
+  document.getElementById('dpsOutV').textContent = fmt(avg(dealt));
+  document.getElementById('dpsInV').textContent = fmt(avg(taken));
+  drawDps(dealt.slice(-DPS_WINDOW), taken.slice(-DPS_WINDOW));
+}
+
+function drawDps(dealt, taken){
+  const cv = document.getElementById('dpsCv');
+  const dpr = window.devicePixelRatio || 1;
+  const W = cv.clientWidth, H = cv.clientHeight;
+  if (!W) return;
+  if (cv.width !== W * dpr || cv.height !== H * dpr){ cv.width = W * dpr; cv.height = H * dpr; }
+  const g = cv.getContext('2d');
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.clearRect(0, 0, W, H);
+
+  const max = Math.max(10, ...dealt, ...taken);
+  const top = 2, bottom = H - 2;
+  const X = i => i / (DPS_WINDOW - 1) * W;
+  const Y = v => top + (1 - v / max) * (bottom - top);
+
+  g.strokeStyle = 'rgba(70,79,94,.5)'; g.lineWidth = 1;
+  g.beginPath(); g.moveTo(0, Y(max / 2)); g.lineTo(W, Y(max / 2)); g.stroke();
+
+  const line = (arr, color, fill) => {
+    g.beginPath();
+    arr.forEach((v, i) => { const x = X(i), y = Y(v); i ? g.lineTo(x, y) : g.moveTo(x, y); });
+    g.strokeStyle = color; g.lineWidth = 1.5; g.stroke();
+    g.lineTo(W, bottom); g.lineTo(0, bottom); g.closePath();
+    g.fillStyle = fill; g.fill();
+  };
+  line(taken, 'rgba(242,100,122,.95)', 'rgba(242,100,122,.10)');
+  line(dealt, 'rgba(77,163,255,.95)', 'rgba(77,163,255,.12)');
+}
+setInterval(dpsTick, 1000);
 
 // Der Timer tickt lokal jede Sekunde — das einzige bewusst "lebendige" Element
 setInterval(() => {

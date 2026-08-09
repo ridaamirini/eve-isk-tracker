@@ -107,7 +107,8 @@ const L = {
   noSessions: ['Noch keine abgeschlossenen Sessions.', 'No completed sessions yet.'],
 
   // Overlay-Screen
-  overlaySub: ['Browser-Quelle für Streamlabs/OBS · 420 × 240 px', 'Browser source for Streamlabs/OBS · 420 × 240 px'],
+  overlaySub: ['Browser-Quelle für Streamlabs/OBS', 'Browser source for Streamlabs/OBS'],
+  recSize: ['empfohlen', 'recommended'],
   transparentNote: ['Hintergrund ist in OBS voll transparent', 'Background is fully transparent in OBS'],
   metricsLabel: ['Angezeigte Werte', 'Displayed values'],
   metricsHint: ['(anklicken zum An-/Abwählen)', '(click to toggle)'],
@@ -116,9 +117,12 @@ const L = {
              'Values only change on real wallet updates (~every 2 min); ISK/h is recalculated at most every 5 min so nothing creeps on stream'],
   txtLabel: ['Alternative: Textdatei für Textquellen', 'Alternative: text file for text sources'],
   savePath: ['Pfad speichern', 'Save path'],
-  overlayNote: ['In Streamlabs als Browser-Quelle mit 420×240 anlegen. Das Widget zeigt ohne laufende Session nur den Kontostand.',
-                'Add as a browser source at 420×240 in Streamlabs. Without an active session the widget only shows the wallet balance.'],
+  overlayNote: ['In Streamlabs als Browser-Quelle mit der oben empfohlenen Größe anlegen — sie richtet sich nach den gewählten Kacheln und dem DPS-Graph. Das Widget zeigt ohne laufende Session nur den Kontostand.',
+                'Add as a browser source at the recommended size shown above — it follows the selected tiles and the DPS graph. Without an active session the widget only shows the wallet balance.'],
   minOneMetric: ['Mindestens ein Wert muss angezeigt bleiben.', 'At least one value must stay visible.'],
+  dpsSrcLabel: ['DPS-Graph als eigene Quelle', 'DPS graph as separate source'],
+  dpsSrcNote: ['Eigene Browser-Quelle, frei in der Szene platzierbar — dieselben Live-Kurven wie im Game-Overlay.',
+               'Separate browser source, freely placeable in your scene — the same live curves as the in-game overlay.'],
 
   // LP Store
   lpSub: ['Was deine Loyalitätspunkte in ISK wert sind · Jita-Preise', 'What your loyalty points are worth in ISK · Jita prices'],
@@ -535,6 +539,7 @@ async function loadStatus() {
 
   const url = `${location.origin}/overlay?charId=${S.charId ?? '<ID>'}`;
   $('srcUrl').value = url;
+  $('dpsSrcUrl').value = `${location.origin}/dpswidget?charId=${S.charId ?? '<ID>'}`;
   $('btnCsv').href = S.charId ? `/api/wallet/export.csv?charId=${S.charId}` : '#';
 }
 
@@ -887,6 +892,7 @@ const metricDefs = () => [
   { key: 'destroyed', name: LANG === 'en' ? 'Destroyed' : 'Zerstört', label: LANG === 'en' ? 'DESTROYED' : 'ZERSTÖRT' },
   { key: 'mining', name: 'Mining', label: LANG === 'en' ? 'MINING VALUE' : 'MINING-WERT' },
   { key: 'wallet', name: 'Wallet', label: 'WALLET' },
+  { key: 'dps', name: LANG === 'en' ? 'DPS graph' : 'DPS-Graph', label: 'DPS' },
 ];
 const activeMetrics = () =>
   ((S.status && S.status.overlayMetrics) || 'time,session,rate,mining').split(',').filter(Boolean);
@@ -913,6 +919,22 @@ async function loadOverlayScreen() {
   $('metricToggles').innerHTML = metricDefs().map(m =>
     `<span class="tag ${act.includes(m.key) ? 'tag-accent' : 'tag-off'} click" data-metric="${m.key}">${m.name}</span>`).join('');
 }
+
+// Empfohlene Quellgröße direkt am echten Widget in der Vorschau messen —
+// die Höhe hängt von den gewählten Kacheln und dem DPS-Graph ab
+function updateRecommendedSize() {
+  try {
+    const doc = $('pvFrame').contentDocument;
+    const w = doc && doc.getElementById('w');
+    if (!w || !w.offsetHeight) return;
+    // 8 px Rand des Widgets, auf 10er-Schritte aufgerundet
+    const h = Math.ceil((w.offsetHeight + 8) / 10) * 10;
+    const txt = `${t('recSize')} 420 × ${h} px`;
+    $('recSize').textContent = '· ' + txt;
+    $('srcSize').textContent = '— ' + txt;
+  } catch (e) { /* iframe noch nicht bereit */ }
+}
+setInterval(() => { if (S.screen === 'overlay') updateRecommendedSize(); }, 2000);
 
 /** Das 420×240-Widget proportional in die Szenen-Vorschau einpassen. */
 function scalePreview() {
