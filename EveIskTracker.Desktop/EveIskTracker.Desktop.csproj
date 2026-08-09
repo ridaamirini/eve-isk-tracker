@@ -8,7 +8,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>EveIskTracker</RootNamespace>
     <AssemblyName>EveIskTracker</AssemblyName>
-    <Version>0.1.0</Version>
+    <Version>0.3.0</Version>
     <Product>EVE ISK Tracker</Product>
     <Authors>Rida Amirini</Authors>
     <InvariantGlobalization>true</InvariantGlobalization>
