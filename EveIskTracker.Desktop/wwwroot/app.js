@@ -117,8 +117,8 @@ const L = {
              'Values only change on real wallet updates (~every 2 min); ISK/h is recalculated at most every 5 min so nothing creeps on stream'],
   txtLabel: ['Alternative: Textdatei für Textquellen', 'Alternative: text file for text sources'],
   savePath: ['Pfad speichern', 'Save path'],
-  overlayNote: ['In Streamlabs als Browser-Quelle mit der oben empfohlenen Größe anlegen — sie richtet sich nach den gewählten Kacheln und dem DPS-Graph. Das Widget zeigt ohne laufende Session nur den Kontostand.',
-                'Add as a browser source at the recommended size shown above — it follows the selected tiles and the DPS graph. Without an active session the widget only shows the wallet balance.'],
+  overlayNote: ['In Streamlabs als Browser-Quelle mit der oben empfohlenen Größe anlegen — sie richtet sich nach den gewählten Kacheln und dem DPS-Graph. Das Widget zeigt ohne laufende Session nur den Kontostand. Die DPS-Kurven in der Vorschau sind Demo-Daten; die OBS-Quelle zeigt echte.',
+                'Add as a browser source at the recommended size shown above — it follows the selected tiles and the DPS graph. Without an active session the widget only shows the wallet balance. The DPS curves in the preview are demo data; the OBS source shows real ones.'],
   minOneMetric: ['Mindestens ein Wert muss angezeigt bleiben.', 'At least one value must stay visible.'],
   dpsSrcLabel: ['DPS-Graph als eigene Quelle', 'DPS graph as separate source'],
   dpsSrcNote: ['Eigene Browser-Quelle, frei in der Szene platzierbar — dieselben Live-Kurven wie im Game-Overlay.',
@@ -902,9 +902,11 @@ async function loadOverlayScreen() {
   const d = await api(`/api/overlay-data?charId=${S.charId}`);
 
   // Vorschau = das echte Widget als iframe; nur bei Charakterwechsel neu laden,
-  // Daten- und Konfig-Änderungen holt es sich über sein eigenes 5s-Polling selbst
+  // Daten- und Konfig-Änderungen holt es sich über sein eigenes 5s-Polling selbst.
+  // demo=1 füttert nur den DPS-Graph mit simulierten Kurven — die OBS-Quelle
+  // (ohne demo-Parameter) zeigt immer echte Daten.
   const frame = $('pvFrame');
-  const src = `/overlay?charId=${S.charId}`;
+  const src = `/overlay?charId=${S.charId}&demo=1`;
   if (!frame.dataset.src || frame.dataset.src !== src) {
     frame.dataset.src = src;
     frame.src = src;

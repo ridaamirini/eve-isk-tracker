@@ -735,8 +735,43 @@ WHERE l.character_id=$c AND l.lp > 0 ORDER BY l.lp DESC", ("$c", charId)))
 
         // Live-Schadensdaten aus dem EVE-Game-Log. Der erste Aufruf weckt den
         // Log-Mitleser; ohne Abfragen legt er sich nach 5 Minuten wieder schlafen.
-        app.MapGet("/api/dps", (long charId, int? window) =>
+        // demo=1 liefert simulierte Kurven — für die Widget-Vorschau in der App,
+        // damit man den Graphen auch ohne laufenden Kampf beurteilen kann.
+        app.MapGet("/api/dps", (long charId, int? window, int? demo) =>
         {
+            if (demo == 1)
+            {
+                var win = Math.Clamp(window ?? 180, 30, 900);
+                var end = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                var demoDealt = new long[win];
+                var demoTaken = new long[win];
+                for (var i = 0; i < win; i++)
+                {
+                    // deterministisch aus der absoluten Sekunde, damit die Kurven beim
+                    // Sekunden-Polling ruhig weiterlaufen statt zufällig zu flackern
+                    var ts = end - win + 1 + i;
+                    demoDealt[i] = ts % 4 == 0 ? 380 + ts * 37 % 240 : (ts % 4 == 2 ? 140 : 0);
+                    demoTaken[i] = 70 + ts * 17 % 110 + (ts % 45 < 8 ? 210 : 0);
+                }
+                return Results.Ok(new
+                {
+                    tracking = true,
+                    file = "demo",
+                    dir = "",
+                    dirExists = true,
+                    now = Util.NowIso(),
+                    dealt = demoDealt,
+                    taken = demoTaken,
+                    totalDealt = 84911L,
+                    totalTaken = 7442L,
+                    lastEvent = Util.NowIso(),
+                    listener = "DEMO",
+                    fileCharId = 0L,
+                    modules = Config.GameOverlayModules.Split(','),
+                    layout = Config.GameOverlayLayout,
+                    lang = Config.Lang,
+                });
+            }
             var name = Db.Scalar("SELECT name FROM characters WHERE character_id=$c", ("$c", charId));
             var s = CombatTracker.Snapshot(charId,
                 name == null || name == DBNull.Value ? "" : (string)name,

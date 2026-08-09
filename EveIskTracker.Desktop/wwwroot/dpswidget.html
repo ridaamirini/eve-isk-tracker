@@ -61,6 +61,8 @@
 const $ = id => document.getElementById(id);
 const WINDOW = 120, SMOOTH = 10;
 let charId = new URLSearchParams(location.search).get('charId');
+// demo=1: simulierte Kurven (Vorschau/Test ohne laufenden Kampf)
+const DEMO = new URLSearchParams(location.search).get('demo') === '1';
 
 function fmt(v){
   const a = Math.abs(v);
@@ -84,7 +86,7 @@ async function tick(){
   if (!charId){ await resolveChar(); if (!charId){ w.classList.remove('on'); return; } }
   let d;
   try {
-    const r = await fetch(`/api/dps?charId=${encodeURIComponent(charId)}&window=${WINDOW + SMOOTH + 1}`);
+    const r = await fetch(`/api/dps?charId=${encodeURIComponent(charId)}&window=${WINDOW + SMOOTH + 1}${DEMO ? '&demo=1' : ''}`);
     if (!r.ok) throw 0;
     d = await r.json();
   } catch(e){

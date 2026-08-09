@@ -75,6 +75,8 @@
 
 <script>
 const charId = new URLSearchParams(location.search).get('charId');
+// demo=1: die App-Vorschau zeigt simulierte DPS-Kurven statt echter Log-Daten
+const DEMO = new URLSearchParams(location.search).get('demo') === '1';
 
 function fmt(v){
   const a = Math.abs(v);
@@ -196,7 +198,7 @@ async function dpsTick(){
   if (!dpsOn || !charId) return;
   let d;
   try {
-    const r = await fetch(`/api/dps?charId=${encodeURIComponent(charId)}&window=${DPS_WINDOW + DPS_SMOOTH + 1}`);
+    const r = await fetch(`/api/dps?charId=${encodeURIComponent(charId)}&window=${DPS_WINDOW + DPS_SMOOTH + 1}${DEMO ? '&demo=1' : ''}`);
     if (!r.ok) return;
     d = await r.json();
   } catch(e){ return; }
