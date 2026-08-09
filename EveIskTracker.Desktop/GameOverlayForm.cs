@@ -84,8 +84,17 @@ public class GameOverlayForm : Form
 
     private async Task InitWebView()
     {
+        // Eigener Profilordner UND eigener Browserprozess ohne GPU-Beschleunigung:
+        // Immer-im-Vordergrund-Overlays über Spielen sind der klassische Auslöser
+        // für Grafiktreiber-Abstürze. Die kleine Karte mit ihrem 1-fps-Graph braucht
+        // keine GPU — Software-Rendering umgeht den Treiber komplett, und durch die
+        // Prozesstrennung kann ein Absturz weder Hauptfenster noch Spiel mitreißen.
+        var opts = new CoreWebView2EnvironmentOptions
+        {
+            AdditionalBrowserArguments = "--disable-gpu --disable-gpu-compositing",
+        };
         var env = await CoreWebView2Environment.CreateAsync(null,
-            Path.Combine(Config.DataDir, "webview2"));
+            Path.Combine(Config.DataDir, "webview2-overlay"), opts);
         await _web.EnsureCoreWebView2Async(env);
 
         var core = _web.CoreWebView2;
@@ -93,6 +102,13 @@ public class GameOverlayForm : Form
         core.Settings.IsStatusBarEnabled = false;
         core.Settings.AreDevToolsEnabled = false;
         core.Settings.IsZoomControlEnabled = false;
+
+        // Stirbt der Render-Prozess doch einmal, neu laden statt weißer Karte
+        core.ProcessFailed += (_, _) =>
+        {
+            try { BeginInvoke(() => { try { _web.CoreWebView2?.Reload(); } catch { } }); }
+            catch { }
+        };
 
         // Die Seite meldet sich für Fensteraktionen, die HTML allein nicht kann:
         // close = Overlay ausblenden, h:/w:<px> = Wunschmaße nach Modul-/Ansichtswahl
@@ -117,6 +133,7 @@ public class GameOverlayForm : Form
     {
         if (on)
         {
+            try { _web.CoreWebView2?.Resume(); } catch { }
             RestorePosition();
             Show();
             SetWindowPos(Handle, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
@@ -126,6 +143,9 @@ public class GameOverlayForm : Form
         {
             if (_moveMode) SetMoveMode(false);
             Hide();
+            // Ausgeblendet komplett schlafen legen: keine Timer, kein Rendering,
+            // keine Abfragen — das Overlay kostet dann exakt nichts
+            try { _web.CoreWebView2?.TrySuspendAsync(); } catch { }
         }
         Config.GameOverlayOn = on;
     }
