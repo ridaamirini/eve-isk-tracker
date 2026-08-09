@@ -59,7 +59,8 @@
 <script>
 'use strict';
 const $ = id => document.getElementById(id);
-const WINDOW = 120, SMOOTH = 10;
+const WINDOW = 120, SMOOTH = 10, SMOOTHW = 7, EDGE = 3;
+let series = null;   // letzter Datenstand + Zeitstempel fürs flüssige Scrollen
 let charId = new URLSearchParams(location.search).get('charId');
 // demo=1: simulierte Kurven (Vorschau/Test ohne laufenden Kampf)
 const DEMO = new URLSearchParams(location.search).get('demo') === '1';
@@ -86,7 +87,7 @@ async function tick(){
   if (!charId){ await resolveChar(); if (!charId){ w.classList.remove('on'); return; } }
   let d;
   try {
-    const r = await fetch(`/api/dps?charId=${encodeURIComponent(charId)}&window=${WINDOW + SMOOTH + 1}${DEMO ? '&demo=1' : ''}`);
+    const r = await fetch(`/api/dps?charId=${encodeURIComponent(charId)}&window=${WINDOW + SMOOTH + SMOOTHW + EDGE + 1}${DEMO ? '&demo=1' : ''}`);
     if (!r.ok) throw 0;
     d = await r.json();
   } catch(e){
@@ -100,28 +101,52 @@ async function tick(){
   $('inL').textContent = en ? 'TAKEN' : 'ERLITTEN';
   $('char').textContent = d.listener || '';
 
-  // angebrochene letzte Sekunde weglassen — sie würde die Kurve künstlich drücken
-  const dealt = d.dealt.slice(0, -1), taken = d.taken.slice(0, -1);
+  // angebrochene Sekunde + Nachzügler-Puffer abschneiden: EVE schreibt sein Log
+  // gepuffert, die jüngsten Sekunden füllen sich nachträglich und würden am
+  // rechten Rand "zucken"
+  const cut = a => a.slice(0, -(EDGE + 1));
+  const dealt = cut(d.dealt), taken = cut(d.taken);
   const avg = a => a.slice(-SMOOTH).reduce((x, y) => x + y, 0) / SMOOTH;
   $('outV').textContent = fmt(avg(dealt));
   $('inV').textContent = fmt(avg(taken));
-  draw(dealt.slice(-WINDOW), taken.slice(-WINDOW));
+  // erst glätten, dann aufs Fenster schneiden — voller Mittelwert auch am linken Rand
+  series = {
+    dealt: smoothArr(dealt).slice(-WINDOW),
+    taken: smoothArr(taken).slice(-WINDOW),
+    at: performance.now(),
+  };
   w.classList.add('on');
 }
 
-function draw(dealt, taken){
+// Gleitender Mittelwert (nur Vergangenheit): macht aus Sekundennadeln runde Hügel
+function smoothArr(arr, w = SMOOTHW){
+  const out = new Array(arr.length);
+  for (let i = 0; i < arr.length; i++){
+    let s = 0, n = 0;
+    for (let j = Math.max(0, i - w + 1); j <= i; j++){ s += arr[j]; n++; }
+    out[i] = s / n;
+  }
+  return out;
+}
+
+// Flüssig statt sekündlich: die Kurve gleitet per Animationsframe kontinuierlich
+// nach links, der Versatz kommt aus der Zeit seit dem letzten Datenstand
+function draw(){
+  const s = series;
   const cv = $('cv');
   const dpr = window.devicePixelRatio || 1;
   const W = cv.clientWidth, H = cv.clientHeight;
-  if (!W) return;
+  if (!W || !s) return;
   if (cv.width !== W * dpr || cv.height !== H * dpr){ cv.width = W * dpr; cv.height = H * dpr; }
   const g = cv.getContext('2d');
   g.setTransform(dpr, 0, 0, dpr, 0, 0);
   g.clearRect(0, 0, W, H);
 
-  const max = Math.max(10, ...dealt, ...taken);
+  const max = Math.max(10, ...s.dealt, ...s.taken);
   const top = 2, bottom = H - 2;
-  const X = i => i / (WINDOW - 1) * W;
+  const px = W / (WINDOW - 1);
+  const shift = Math.min((performance.now() - s.at) / 1000, 2);
+  const X = i => W - ((s.dealt.length - 1 - i) + shift) * px;
   const Y = v => top + (1 - v / max) * (bottom - top);
 
   g.strokeStyle = 'rgba(70,79,94,.5)'; g.lineWidth = 1;
@@ -129,19 +154,27 @@ function draw(dealt, taken){
   g.fillStyle = 'rgba(153,164,181,.8)'; g.font = '9px IBM Plex Sans, sans-serif';
   g.fillText(fmt(max), 3, 10);
 
+  // Weiche Kurve: Bézier durch die Mittelpunkte statt eckiger Linienzug
   const line = (arr, color, fill) => {
     g.beginPath();
-    arr.forEach((v, i) => { const x = X(i), y = Y(v); i ? g.lineTo(x, y) : g.moveTo(x, y); });
+    g.moveTo(X(0), Y(arr[0]));
+    for (let i = 1; i < arr.length - 1; i++)
+      g.quadraticCurveTo(X(i), Y(arr[i]), (X(i) + X(i + 1)) / 2, (Y(arr[i]) + Y(arr[i + 1])) / 2);
+    g.lineTo(X(arr.length - 1), Y(arr[arr.length - 1]));
     g.strokeStyle = color; g.lineWidth = 1.6; g.stroke();
-    g.lineTo(W, bottom); g.lineTo(0, bottom); g.closePath();
+    g.lineTo(X(arr.length - 1), bottom); g.lineTo(X(0), bottom); g.closePath();
     g.fillStyle = fill; g.fill();
   };
-  line(taken, 'rgba(242,100,122,.95)', 'rgba(242,100,122,.10)');
-  line(dealt, 'rgba(77,163,255,.95)', 'rgba(77,163,255,.12)');
+  line(s.taken, 'rgba(242,100,122,.95)', 'rgba(242,100,122,.10)');
+  line(s.dealt, 'rgba(77,163,255,.95)', 'rgba(77,163,255,.12)');
 }
 
 tick();
 setInterval(tick, 1000);   // nur die lokale App, kein Verkehr nach außen
+(function frame(){
+  if (series) draw();
+  requestAnimationFrame(frame);
+})();
 </script>
 </body>
 </html>

@@ -194,52 +194,88 @@ async function tick(){
 let dpsOn = false;
 const DPS_WINDOW = 120, DPS_SMOOTH = 10;
 
+// EVE schreibt sein Log gepuffert — die jüngsten Sekunden füllen sich nachträglich.
+// Deshalb bleiben die letzten DPS_EDGE Sekunden unsichtbar, bis sie stabil sind;
+// sonst "zuckt" die Kurve am rechten Rand.
+const DPS_EDGE = 3, DPS_SMOOTHW = 7;
+let dpsSeries = null;   // letzter Datenstand + Zeitstempel fürs flüssige Scrollen
+
 async function dpsTick(){
   if (!dpsOn || !charId) return;
   let d;
   try {
-    const r = await fetch(`/api/dps?charId=${encodeURIComponent(charId)}&window=${DPS_WINDOW + DPS_SMOOTH + 1}${DEMO ? '&demo=1' : ''}`);
+    const r = await fetch(`/api/dps?charId=${encodeURIComponent(charId)}&window=${DPS_WINDOW + DPS_SMOOTH + DPS_SMOOTHW + DPS_EDGE + 1}${DEMO ? '&demo=1' : ''}`);
     if (!r.ok) return;
     d = await r.json();
   } catch(e){ return; }
 
-  // letzte (angebrochene) Sekunde weglassen, sie würde die Kurve künstlich drücken
-  const dealt = d.dealt.slice(0, -1), taken = d.taken.slice(0, -1);
+  // angebrochene Sekunde + Nachzügler-Puffer abschneiden
+  const cut = a => a.slice(0, -(DPS_EDGE + 1));
+  const dealt = cut(d.dealt), taken = cut(d.taken);
   const avg = a => a.slice(-DPS_SMOOTH).reduce((x, y) => x + y, 0) / DPS_SMOOTH;
   document.getElementById('dpsOutV').textContent = fmt(avg(dealt));
   document.getElementById('dpsInV').textContent = fmt(avg(taken));
-  drawDps(dealt.slice(-DPS_WINDOW), taken.slice(-DPS_WINDOW));
+  // erst glätten, dann aufs Fenster schneiden — so hat auch der linke Rand volle Glättung
+  dpsSeries = {
+    dealt: smoothArr(dealt).slice(-DPS_WINDOW),
+    taken: smoothArr(taken).slice(-DPS_WINDOW),
+    at: performance.now(),
+  };
 }
 
-function drawDps(dealt, taken){
+// Gleitender Mittelwert (nur Vergangenheit): macht aus Sekundennadeln runde Hügel
+function smoothArr(arr, w = DPS_SMOOTHW){
+  const out = new Array(arr.length);
+  for (let i = 0; i < arr.length; i++){
+    let s = 0, n = 0;
+    for (let j = Math.max(0, i - w + 1); j <= i; j++){ s += arr[j]; n++; }
+    out[i] = s / n;
+  }
+  return out;
+}
+
+// Flüssig statt sekündlich: die Kurve gleitet per Animationsframe kontinuierlich
+// nach links, der Versatz kommt aus der Zeit seit dem letzten Datenstand
+function drawDps(){
+  const s = dpsSeries;
   const cv = document.getElementById('dpsCv');
   const dpr = window.devicePixelRatio || 1;
   const W = cv.clientWidth, H = cv.clientHeight;
-  if (!W) return;
+  if (!W || !s) return;
   if (cv.width !== W * dpr || cv.height !== H * dpr){ cv.width = W * dpr; cv.height = H * dpr; }
   const g = cv.getContext('2d');
   g.setTransform(dpr, 0, 0, dpr, 0, 0);
   g.clearRect(0, 0, W, H);
 
-  const max = Math.max(10, ...dealt, ...taken);
+  const max = Math.max(10, ...s.dealt, ...s.taken);
   const top = 2, bottom = H - 2;
-  const X = i => i / (DPS_WINDOW - 1) * W;
+  const px = W / (DPS_WINDOW - 1);
+  const shift = Math.min((performance.now() - s.at) / 1000, 2);
+  const X = i => W - ((s.dealt.length - 1 - i) + shift) * px;
   const Y = v => top + (1 - v / max) * (bottom - top);
 
   g.strokeStyle = 'rgba(70,79,94,.5)'; g.lineWidth = 1;
   g.beginPath(); g.moveTo(0, Y(max / 2)); g.lineTo(W, Y(max / 2)); g.stroke();
 
+  // Weiche Kurve: Bézier durch die Mittelpunkte statt eckiger Linienzug
   const line = (arr, color, fill) => {
     g.beginPath();
-    arr.forEach((v, i) => { const x = X(i), y = Y(v); i ? g.lineTo(x, y) : g.moveTo(x, y); });
+    g.moveTo(X(0), Y(arr[0]));
+    for (let i = 1; i < arr.length - 1; i++)
+      g.quadraticCurveTo(X(i), Y(arr[i]), (X(i) + X(i + 1)) / 2, (Y(arr[i]) + Y(arr[i + 1])) / 2);
+    g.lineTo(X(arr.length - 1), Y(arr[arr.length - 1]));
     g.strokeStyle = color; g.lineWidth = 1.5; g.stroke();
-    g.lineTo(W, bottom); g.lineTo(0, bottom); g.closePath();
+    g.lineTo(X(arr.length - 1), bottom); g.lineTo(X(0), bottom); g.closePath();
     g.fillStyle = fill; g.fill();
   };
-  line(taken, 'rgba(242,100,122,.95)', 'rgba(242,100,122,.10)');
-  line(dealt, 'rgba(77,163,255,.95)', 'rgba(77,163,255,.12)');
+  line(s.taken, 'rgba(242,100,122,.95)', 'rgba(242,100,122,.10)');
+  line(s.dealt, 'rgba(77,163,255,.95)', 'rgba(77,163,255,.12)');
 }
 setInterval(dpsTick, 1000);
+(function dpsFrame(){
+  if (dpsOn && dpsSeries) drawDps();
+  requestAnimationFrame(dpsFrame);
+})();
 
 // Der Timer tickt lokal jede Sekunde — das einzige bewusst "lebendige" Element
 setInterval(() => {
