@@ -358,6 +358,36 @@ CREATE TABLE IF NOT EXISTS ore_prices (
     updated_utc TEXT
 );
 
+-- Loyalitätspunkte je Charakter und NPC-Corp (ESI loyalty/points)
+CREATE TABLE IF NOT EXISTS loyalty (
+    character_id INTEGER NOT NULL,
+    corp_id      INTEGER NOT NULL,
+    lp           INTEGER NOT NULL,
+    updated_utc  TEXT,
+    PRIMARY KEY(character_id, corp_id)
+);
+
+-- LP-Store-Angebote je NPC-Corp (öffentlich, ändern sich selten -> 24h-Cache)
+CREATE TABLE IF NOT EXISTS lp_offers (
+    corp_id       INTEGER NOT NULL,
+    offer_id      INTEGER NOT NULL,
+    type_id       INTEGER NOT NULL,
+    quantity      INTEGER NOT NULL,
+    lp_cost       INTEGER NOT NULL,
+    isk_cost      REAL NOT NULL,
+    required_json TEXT,
+    updated_utc   TEXT,
+    PRIMARY KEY(corp_id, offer_id)
+);
+
+-- Jita-Preise beliebiger Typen (LP-Store-Bewertung, Produkt-Research), stündlich
+CREATE TABLE IF NOT EXISTS market_prices (
+    type_id     INTEGER PRIMARY KEY,
+    jita_sell   REAL,
+    jita_buy    REAL,
+    updated_utc TEXT
+);
+
 -- Killmails: ID+Hash von ESI, ISK-Wert von zKillboard nachgeschlagen
 CREATE TABLE IF NOT EXISTS kills (
     character_id        INTEGER NOT NULL,

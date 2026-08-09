@@ -48,6 +48,18 @@ public static class Program
             form.Activate();
         });
 
+        // Game-Overlay: die Oberfläche (WebView2) steuert das WinForms-Fenster über
+        // diese Haken — Aufrufe kommen von Kestrel-Threads, daher immer BeginInvoke
+        WebHost.SetGameOverlay = on => form.BeginInvoke(() => form.SetGameOverlay(on));
+        WebHost.SetGameOverlayMove = on => form.BeginInvoke(() => form.SetGameOverlayMove(on));
+        WebHost.GameOverlayVisible = () => form.GameOverlayVisible;
+        WebHost.GameOverlayMoving = () => form.GameOverlayMoving;
+        WebHost.ApplyGameOverlaySettings = () => form.BeginInvoke(form.ApplyGameOverlaySettings);
+
+        // War das Overlay beim letzten Beenden an, kommt es beim Start wieder
+        if (Config.GameOverlayOn)
+            form.Load += (_, _) => form.BeginInvoke(() => form.SetGameOverlay(true));
+
         // --tray: unsichtbar starten (für den Autostart mit Windows); Fenster kommt
         // dann per Doppelklick aufs Tray-Symbol
         if (args.Contains("--tray"))

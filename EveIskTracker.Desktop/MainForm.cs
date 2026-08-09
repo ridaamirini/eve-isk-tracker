@@ -16,9 +16,17 @@ public class MainForm : Form
     private readonly NotifyIcon _tray = new();
     private bool _reallyClose;
     private bool _trayHintShown;
+    private GameOverlayForm _overlay;
 
     [DllImport("dwmapi.dll")]
     private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int value, int size);
+
+    // Globaler Hotkey Strg+Umschalt+O: Game-Overlay ein-/ausblenden, auch wenn EVE den Fokus hat
+    [DllImport("user32.dll")] private static extern bool RegisterHotKey(IntPtr hwnd, int id, uint mods, uint vk);
+    [DllImport("user32.dll")] private static extern bool UnregisterHotKey(IntPtr hwnd, int id);
+    private const int HOTKEY_ID = 0xB001;
+    private const uint MOD_CONTROL = 0x2, MOD_SHIFT = 0x4;
+    private const int WM_HOTKEY = 0x312;
 
     public MainForm()
     {
@@ -45,6 +53,44 @@ public class MainForm : Form
         SetupTray();
         Load += async (_, _) => await InitWebView();
         FormClosing += OnClosing;
+        HandleCreated += (_, _) => RegisterHotKey(Handle, HOTKEY_ID, MOD_CONTROL | MOD_SHIFT, 'O');
+    }
+
+    // ---- Game-Overlay (In-Game-HUD) ----
+
+    public bool GameOverlayVisible => _overlay != null && !_overlay.IsDisposed && _overlay.Visible;
+    public bool GameOverlayMoving => _overlay != null && !_overlay.IsDisposed && _overlay.MoveMode;
+
+    public void SetGameOverlay(bool on)
+    {
+        if (_overlay == null || _overlay.IsDisposed)
+        {
+            if (!on) { Config.GameOverlayOn = false; return; }
+            _overlay = new GameOverlayForm();
+        }
+        _overlay.SetOverlayVisible(on);
+    }
+
+    public void SetGameOverlayMove(bool on)
+    {
+        // Verschieben setzt ein sichtbares Overlay voraus
+        if (on && !GameOverlayVisible) SetGameOverlay(true);
+        if (_overlay != null && !_overlay.IsDisposed) _overlay.SetMoveMode(on);
+    }
+
+    public void ApplyGameOverlaySettings()
+    {
+        if (_overlay != null && !_overlay.IsDisposed) _overlay.ApplySettings();
+    }
+
+    protected override void WndProc(ref Message m)
+    {
+        if (m.Msg == WM_HOTKEY && m.WParam == (IntPtr)HOTKEY_ID)
+        {
+            SetGameOverlay(!GameOverlayVisible);
+            return;
+        }
+        base.WndProc(ref m);
     }
 
     private async Task InitWebView()
@@ -78,6 +124,7 @@ public class MainForm : Form
 
         var menu = new ContextMenuStrip();
         menu.Items.Add("Öffnen", null, (_, _) => RestoreFromTray());
+        menu.Items.Add("Game-Overlay ein/aus  (Strg+Umschalt+O)", null, (_, _) => SetGameOverlay(!GameOverlayVisible));
         menu.Items.Add("Widget-URL kopieren", null, (_, _) => CopyOverlayUrl());
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Beenden", null, (_, _) => { _reallyClose = true; Close(); });
@@ -112,6 +159,7 @@ public class MainForm : Form
     {
         if (_reallyClose || e.CloseReason != CloseReason.UserClosing)
         {
+            try { UnregisterHotKey(Handle, HOTKEY_ID); } catch { }
             _tray.Visible = false;
             _tray.Dispose();
             return;

@@ -313,6 +313,112 @@ Console.WriteLine("\n=== 13. ISK-Formatierung ===");
     CheckS("klein", Util.IskShort(750), "750");
 }
 
+Console.WriteLine("\n=== 14. Combat-Log-Parser (DPS-Graph) ===");
+{
+    void CheckParse(string name, string line, bool okExp, int amountExp = 0, bool dealtExp = false)
+    {
+        var ok = CombatParser.TryParse(line, out var utc, out var amount, out var dealt);
+        var pass = ok == okExp && (!okExp || (amount == amountExp && dealt == dealtExp));
+        Console.WriteLine($"  {(pass ? "OK  " : "FEHL")}  {name,-46} erwartet ok={okExp} {amountExp} dealt={dealtExp}   erhalten ok={ok} {amount} dealt={dealt}");
+        if (pass) passed++; else failed++;
+    }
+
+    // Englischer Client, Standard-Farbcodes
+    CheckParse("ausgeteilt (en)",
+        "[ 2026.08.09 18:23:45 ] (combat) <color=0xff00ffff><b>284</b> <color=0x77ffffff>to</color> <b><color=0xffffffff>Guristas Warden</b><color=0x77ffffff> - Inferno Heavy Missile - Hits",
+        true, 284, true);
+    CheckParse("erlitten (en)",
+        "[ 2026.08.09 18:23:47 ] (combat) <color=0xffcc0000><b>217</b> <color=0x77ffffff>from</color> <b><color=0xffffffff>Guristas Warden</b><color=0x77ffffff> - Scourge Missile - Penetrates",
+        true, 217, false);
+    // Deutscher Client: Farbcodes identisch — Rückfallebene über an/von trotzdem prüfen
+    CheckParse("ausgeteilt (de, Wort-Fallback)",
+        "[ 2026.08.09 18:23:48 ] (combat) <color=0xffffffff><b>150</b> <color=0x77ffffff>an</color> <b>Gegner</b> - Treffer",
+        true, 150, true);
+    CheckParse("erlitten (de, Wort-Fallback)",
+        "[ 2026.08.09 18:23:49 ] (combat) <color=0xffffffff><b>99</b> <color=0x77ffffff>von</color> <b>Gegner</b> - Streifschuss",
+        true, 99, false);
+    // Kein Schaden / keine Kampfzeile
+    CheckParse("Miss ohne Zahl", "[ 2026.08.09 18:23:50 ] (combat) Your missile misses Guristas Warden completely", false);
+    CheckParse("keine Kampfzeile", "[ 2026.08.09 18:23:51 ] (notify) Docking request accepted", false);
+
+    // Zeitstempel wird als UTC gelesen
+    CombatParser.TryParse(
+        "[ 2026.08.09 18:23:45 ] (combat) <color=0xff00ffff><b>10</b> <color=0x77ffffff>to</color> <b>X</b>",
+        out var ts, out _, out _);
+    Check("Zeitstempel Stunde (UTC)", ts.Hour, 18);
+    Check("Zeitstempel Kind=UTC", ts.Kind == DateTimeKind.Utc ? 1 : 0, 1);
+}
+
+Console.WriteLine("\n=== 15. DPS-Sekunden-Eimer ===");
+{
+    var b = new DpsBuckets();
+    var t0 = new DateTime(2026, 8, 9, 18, 0, 0, DateTimeKind.Utc);
+    b.Add(t0, 100, true);
+    b.Add(t0, 50, true);              // gleiche Sekunde: wird addiert
+    b.Add(t0.AddSeconds(1), 30, false);
+    b.Add(t0.AddSeconds(3), 70, true);
+
+    var (dealt, taken) = b.Window(t0.AddSeconds(3), 4);
+    Check("Eimer t0 ausgeteilt", dealt[0], 150);
+    Check("Eimer t0+1 erlitten", taken[1], 30);
+    Check("Eimer t0+2 leer", dealt[2] + taken[2], 0);
+    Check("Eimer t0+3 ausgeteilt", dealt[3], 70);
+    Check("Summe ausgeteilt", b.TotalDealt, 220);
+    Check("Summe erlitten", b.TotalTaken, 30);
+
+    // Fenster kürzer als Historie: alte Sekunden fallen raus
+    var (d2, _) = b.Window(t0.AddSeconds(3), 2);
+    Check("kurzes Fenster: nur t0+2/t0+3", d2[0] + d2[1], 70);
+
+    // Prune wirft Altes weg, Summen bleiben
+    b.Prune(t0.AddSeconds(2000), 1200);
+    var (d3, t3) = b.Window(t0.AddSeconds(3), 4);
+    Check("nach Prune keine Eimer mehr", d3.Sum() + t3.Sum(), 0);
+    Check("Summen überleben Prune", b.TotalDealt, 220);
+}
+
+Console.WriteLine("\n=== 16. LP-Store-Bewertung (ISK pro LP) ===");
+{
+    var prices = new Dictionary<long, (double? Sell, double? Buy)>
+    {
+        [100] = (1000, 800),      // Ware: Sell 1000, Buy 800
+        [200] = (50, 40),         // Zutat
+    };
+
+    // 1 Stück für 100 LP + 200 ISK, keine Zutaten
+    var plain = new LpOffer { TypeId = 100, Quantity = 1, LpCost = 100, IskCost = 200 };
+    var (perLp, profit, _, _) = LpStore.Evaluate(plain, prices, sellBasis: true);
+    Check("Gewinn (1000-200)", profit ?? 0, 800);
+    Check("ISK/LP (800/100)", perLp ?? 0, 8);
+
+    // Buy-Basis: Erlös 800 statt 1000
+    (perLp, profit, _, _) = LpStore.Evaluate(plain, prices, sellBasis: false);
+    Check("Buy-Basis Gewinn", profit ?? 0, 600);
+
+    // Mit Menge und Zutaten: 5 Stück, 2 Zutaten je 50 (Sell-Einkauf)
+    var withReq = new LpOffer { TypeId = 100, Quantity = 5, LpCost = 500, IskCost = 1000 };
+    withReq.Required.Add((200, 2));
+    var (perLp2, profit2, value2, reqCost2) = LpStore.Evaluate(withReq, prices, sellBasis: true);
+    Check("Erlös (5*1000)", value2 ?? 0, 5000);
+    Check("Zutaten (2*50)", reqCost2 ?? 0, 100);
+    Check("Gewinn (5000-1000-100)", profit2 ?? 0, 3900);
+    Check("ISK/LP (3900/500)", perLp2 ?? 0, 7.8);
+
+    // Ohne Marktpreis der Ware oder Zutat: nicht bewertbar
+    var noPrice = new LpOffer { TypeId = 999, Quantity = 1, LpCost = 100, IskCost = 0 };
+    var (p3, _, _, _) = LpStore.Evaluate(noPrice, prices, sellBasis: true);
+    Check("unbepreiste Ware -> null", p3.HasValue ? 1 : 0, 0);
+    var badReq = new LpOffer { TypeId = 100, Quantity = 1, LpCost = 100, IskCost = 0 };
+    badReq.Required.Add((999, 1));
+    var (p4, _, _, _) = LpStore.Evaluate(badReq, prices, sellBasis: true);
+    Check("unbepreiste Zutat -> null", p4.HasValue ? 1 : 0, 0);
+
+    // LP-Kosten 0 (reine ISK-Angebote) fliegen raus
+    var freeLp = new LpOffer { TypeId = 100, Quantity = 1, LpCost = 0, IskCost = 10 };
+    var (p5, _, _, _) = LpStore.Evaluate(freeLp, prices, sellBasis: true);
+    Check("LP-Kosten 0 -> null", p5.HasValue ? 1 : 0, 0);
+}
+
 Console.WriteLine($"\n{new string('=', 70)}");
 Console.WriteLine($"  {passed} bestanden, {failed} fehlgeschlagen");
 Console.WriteLine(new string('=', 70));

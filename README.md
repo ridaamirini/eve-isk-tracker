@@ -34,6 +34,15 @@ itself still shows you.
   timer · session ISK · ISK/h · bounties · missions · kills · destroyed · mining · wallet,
   each tile toggleable, optional character portrait & name in the header, fully
   transparent background, live preview inside the app
+- **LP store comparison** — see what your loyalty points are worth: all offers from the
+  corps you hold LP with, valued at Jita prices (including required items), ranked by
+  **ISK per LP** — plus what your current LP balance would pay out at each offer
+- **Product research** — search any item and compare best sell/buy prices across the five
+  major trade hubs, plus its manufacturing bill of materials with Jita-priced build cost
+  and margin vs. the best hub (blueprint data from EVE Ref)
+- **Game overlay** — Discord-style in-game HUD: an always-on-top, click-through window
+  over the EVE client with a **live DPS graph** (damage dealt vs. taken, parsed from
+  EVE's local game logs) and session stats; toggle any time with **Ctrl+Shift+O**
 - **Update countdown** — the dashboard shows exactly how old the current numbers are and
   when the next refresh arrives
 
@@ -44,6 +53,7 @@ itself still shows you.
 ![Reports](docs/reports.png)
 ![Kills](docs/kills.png)
 ![Ore chart](docs/ores.png)
+![Research](docs/research.png)
 ![Stream Overlay](docs/overlay.png)
 
 ## Getting started
@@ -58,6 +68,18 @@ nothing to configure. If you prefer to use **your own CCP application** (or you 
 source, where no default is embedded), see [SETUP.md](SETUP.md).
 
 > Windows SmartScreen warns about unsigned downloads — "More info" → "Run anyway".
+
+### Game overlay (in-game HUD)
+
+**Game Overlay → Show overlay** (or **Ctrl+Shift+O** anywhere). The HUD floats above the
+EVE client — always on top, click-through, never steals focus. The DPS graph tails EVE's
+game logs in `Documents\EVE\logs\Gamelogs` (read-only, no game modification, works in any
+client language) and automatically follows the most recently active client — switch
+characters and the HUD follows. Use *Adjust position* to drag it where you want; pick the
+view (**detailed** with graph and totals, or a **compact** number strip), modules (DPS
+graph, session stats) and opacity (10–100 % slider) in the app. EVE must run in
+**windowed** or **borderless fullscreen** mode — nothing can draw over exclusive
+fullscreen.
 
 ### Widget in OBS/Streamlabs
 

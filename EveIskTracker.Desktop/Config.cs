@@ -89,6 +89,51 @@ public static class Config
         set => Db.SetKv("overlay_char", value ? "1" : "0");
     }
 
+    // ---- Game-Overlay (In-Game-HUD über dem EVE-Client) ----
+
+    /// <summary>Bausteine, die das Game-Overlay zeigt; Reihenfolge = Anzeige-Reihenfolge.</summary>
+    public static readonly string[] KnownOverlayModules = { "dps", "session" };
+
+    /// <summary>Komma-Liste der aktiven Overlay-Bausteine (dps = Schadensgraph, session = ISK-Zeile).</summary>
+    public static string GameOverlayModules
+    {
+        get => Db.GetKv("gameoverlay_modules", "dps,session");
+        set
+        {
+            var wanted = (value ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            var clean = KnownOverlayModules.Where(wanted.Contains).ToArray();
+            Db.SetKv("gameoverlay_modules", clean.Length > 0 ? string.Join(',', clean) : "dps,session");
+        }
+    }
+
+    /// <summary>Deckkraft des Overlay-Fensters in Prozent (10–100, stufenloser Regler).</summary>
+    public static int GameOverlayOpacity
+    {
+        get => int.TryParse(Db.GetKv("gameoverlay_opacity", "95"), out var v) ? Math.Clamp(v, 10, 100) : 95;
+        set => Db.SetKv("gameoverlay_opacity", Math.Clamp(value, 10, 100).ToString());
+    }
+
+    /// <summary>Overlay-Ansicht: "detail" (Graph + Summen) oder "compact" (schmale Zahlenzeile).</summary>
+    public static string GameOverlayLayout
+    {
+        get => Db.GetKv("gameoverlay_layout", "detail") == "compact" ? "compact" : "detail";
+        set => Db.SetKv("gameoverlay_layout", value == "compact" ? "compact" : "detail");
+    }
+
+    /// <summary>War das Overlay beim letzten Beenden sichtbar? Wird beim Start wiederhergestellt.</summary>
+    public static bool GameOverlayOn
+    {
+        get => Db.GetKv("gameoverlay_on", "0") == "1";
+        set => Db.SetKv("gameoverlay_on", value ? "1" : "0");
+    }
+
+    /// <summary>Gemerkte Fensterposition "x,y"; leer = Standard (rechts oben).</summary>
+    public static string GameOverlayPos
+    {
+        get => Db.GetKv("gameoverlay_pos", "");
+        set => Db.SetKv("gameoverlay_pos", value);
+    }
+
     /// <summary>Oberflächensprache: "de" oder "en". Standard Englisch (internationales Publikum).</summary>
     public static string Lang
     {

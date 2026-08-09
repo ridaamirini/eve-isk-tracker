@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>EVE ISK Tracker — Game-Overlay</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+  /* In-Game-HUD im PULSAR-Stil. Läuft im GameOverlayForm (WebView2); der dunkle
+     Hintergrund ist Absicht — die Fenster-Deckkraft regelt WinForms. */
+  :root{
+    --bg:#0a0f16; --text:#e4ebf4; --accent:#4da3ff;
+    --accent-200:#b6d8ff; --accent-800:#1c3d61;
+    --n400:#99a4b5; --n700:#464f5e; --red:#f2647a;
+  }
+  html,body{margin:0;padding:0;background:var(--bg);overflow:hidden;user-select:none;cursor:default}
+  body{font-family:'IBM Plex Sans',sans-serif;color:var(--text)}
+  #card{border:1px solid var(--accent-800);border-radius:12px;overflow:hidden;
+        box-shadow:inset 0 0 24px rgba(77,163,255,.05)}
+
+  .head{display:flex;align-items:center;gap:8px;padding:0 12px;height:28px;
+        border-bottom:1px solid color-mix(in srgb,var(--accent) 30%,transparent)}
+  .dot{width:6px;height:6px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent)}
+  .title{font-size:10px;letter-spacing:.16em;color:var(--accent-200)}
+  .head .file{margin-left:auto;font-size:9px;color:var(--n400);max-width:55%;overflow:hidden;
+              text-overflow:ellipsis;white-space:nowrap}
+
+  /* DPS-Modul */
+  #dps{padding:8px 12px 10px}
+  .dpsrow{display:flex;gap:10px;margin-bottom:6px}
+  .dpscell{flex:1;text-align:center}
+  .dpslabel{font-size:9px;letter-spacing:.12em;color:var(--n400)}
+  .dpsval{font-family:'Chakra Petch',sans-serif;font-size:24px;font-variant-numeric:tabular-nums;line-height:1.15}
+  .dpsval .u{font-size:11px;color:var(--n400)}
+  .out .dpsval{color:var(--accent-200)}
+  .in .dpsval{color:var(--red)}
+  canvas{display:block;width:100%;height:120px}
+  .dpsfoot{display:flex;justify-content:space-between;margin-top:4px;
+           font-size:9px;letter-spacing:.08em;color:var(--n400)}
+  .dpsfoot b{color:var(--text);font-weight:500}
+  .waiting{font-size:10px;color:var(--n400);text-align:center;padding:2px 0 4px}
+
+  /* Session-Modul (kompakte Zeile wie im Stream-Widget) */
+  #sess{display:flex;justify-content:center;padding:8px 6px 10px;
+        border-top:1px solid color-mix(in srgb,var(--accent) 25%,transparent)}
+  .cell{flex:1;text-align:center}
+  .label{font-size:9px;letter-spacing:.12em;color:var(--n400)}
+  .value{font-family:'Chakra Petch',sans-serif;font-size:17px;font-variant-numeric:tabular-nums}
+  .value.accent{color:var(--accent-200)}
+  .value.pos{color:#4dd398}
+  .value.neg{color:var(--red)}
+  .sep{width:1px;background:linear-gradient(180deg,transparent,var(--n700),transparent)}
+  .hidden{display:none!important}
+
+  /* Kompakt-Ansicht: schmale Zahlenzeile ohne Graph und Summen */
+  body.compact .head{height:22px}
+  body.compact .head .title{display:none}
+  body.compact canvas,body.compact .dpsfoot{display:none}
+  body.compact #dps{padding:5px 10px 7px}
+  body.compact .dpsrow{margin-bottom:0}
+  body.compact .dpsval{font-size:16px}
+  body.compact .dpslabel{font-size:8px}
+  body.compact #sess{padding:5px 6px 7px}
+  body.compact .value{font-size:14px}
+</style>
+</head>
+<body>
+
+<div id="card">
+  <div class="head">
+    <span class="dot"></span>
+    <span class="title">COMBAT · LIVE</span>
+    <span class="file" id="fileNote"></span>
+  </div>
+  <div id="dps">
+    <div class="dpsrow">
+      <div class="dpscell out"><div class="dpslabel" id="lblOut">ERTEILT</div>
+        <div class="dpsval"><span id="dpsOut">0</span><span class="u"> DPS</span></div></div>
+      <div class="dpscell in"><div class="dpslabel" id="lblIn">ERLITTEN</div>
+        <div class="dpsval"><span id="dpsIn">0</span><span class="u"> DPS</span></div></div>
+    </div>
+    <canvas id="graph"></canvas>
+    <div class="waiting hidden" id="waiting"></div>
+    <div class="dpsfoot">
+      <span id="sumOut">Σ –</span><span id="winNote"></span><span id="sumIn">Σ –</span>
+    </div>
+  </div>
+  <div id="sess" class="hidden"></div>
+</div>
+
+<script>
+'use strict';
+// Sprache kommt mit den DPS-Daten vom Server (Settings der App)
+let LANG = 'de';
+const T = {
+  dealt:   ['ERTEILT', 'DEALT'],
+  taken:   ['ERLITTEN', 'TAKEN'],
+  noLog:   ['Warte auf Kampf-Log … (EVE gestartet?)', 'Waiting for combat log … (is EVE running?)'],
+  noDir:   ['Gamelogs-Ordner nicht gefunden', 'Gamelogs folder not found'],
+  session: ['SESSION', 'SESSION'],
+  sessIsk: ['SESSION-ISK', 'SESSION ISK'],
+  rate:    ['ISK/STUNDE', 'ISK/HOUR'],
+};
+const tr = k => T[k][LANG === 'en' ? 1 : 0];
+const $ = id => document.getElementById(id);
+
+const WINDOW = 120;          // Sekunden im Graph
+const SMOOTH = 10;           // Glättungsfenster für die große DPS-Zahl
+
+function fmt(v){
+  const a = Math.abs(v);
+  if (a >= 1e12) return (a/1e12).toFixed(2)+'T';
+  if (a >= 1e9)  return (a/1e9).toFixed(2)+'B';
+  if (a >= 1e6)  return (a/1e6).toFixed(1)+'M';
+  if (a >= 1e3)  return (a/1e3).toFixed(1)+'K';
+  return Math.round(a).toString();
+}
+const signed = v => (v < 0 ? '−' : '+') + fmt(v);
+
+// ---- Fenster-Steuerung über die App (WebView2-Host) ----
+const post = m => { try { window.chrome?.webview?.postMessage(m); } catch(e){} };
+
+// Wunschhöhe ans Fenster melden (CSS-px -> Geräte-px), sobald sich Module ändern
+let lastH = 0;
+function sendHeight(){
+  const h = Math.ceil($('card').getBoundingClientRect().height * window.devicePixelRatio);
+  if (h !== lastH && h > 0) { lastH = h; post('h:' + h); }
+}
+
+// ---- Charakter auflösen: erster aktiver Charakter der App ----
+let charId = new URLSearchParams(location.search).get('charId');
+async function resolveChar(){
+  if (charId) return;
+  try {
+    const st = await (await fetch('/api/status')).json();
+    const c = (st.characters || []).find(x => x.enabled) || (st.characters || [])[0];
+    if (c) charId = c.characterId;
+  } catch(e){}
+}
+
+// ---- DPS ----
+let modules = ['dps', 'session'];
+let layout = 'detail';
+async function tickDps(){
+  if (!charId) { await resolveChar(); if (!charId) return; }
+  let d;
+  try {
+    d = await (await fetch(`/api/dps?charId=${charId}&window=${WINDOW + SMOOTH + 1}`)).json();
+  } catch(e){ return; }
+
+  if ((d.lang || 'de') !== LANG){ LANG = d.lang; applyLang(); }
+  if ((d.modules || []).join(',') !== modules.join(',')){ modules = d.modules || modules; applyModules(); }
+  if ((d.layout || 'detail') !== layout){ layout = d.layout; applyLayout(); }
+
+  // letzte (angebrochene) Sekunde weglassen — sie würde die Kurve künstlich drücken
+  const dealt = d.dealt.slice(0, -1), taken = d.taken.slice(0, -1);
+  const gd = dealt.slice(-WINDOW), gt = taken.slice(-WINDOW);
+  const avg = a => a.slice(-SMOOTH).reduce((x,y) => x+y, 0) / SMOOTH;
+  $('dpsOut').textContent = fmt(avg(dealt));
+  $('dpsIn').textContent = fmt(avg(taken));
+  $('sumOut').innerHTML = 'Σ <b>' + fmt(d.totalDealt) + '</b>';
+  $('sumIn').innerHTML = 'Σ <b>' + fmt(d.totalTaken) + '</b>';
+  $('winNote').textContent = WINDOW + 's';
+  // wessen Log läuft: Charaktername aus dem Log-Kopf, sonst Dateiname
+  $('fileNote').textContent = d.listener || d.file || '';
+
+  const wait = $('waiting');
+  if (!d.dirExists){ wait.textContent = tr('noDir'); wait.classList.remove('hidden'); }
+  else if (!d.tracking){ wait.textContent = tr('noLog'); wait.classList.remove('hidden'); }
+  else wait.classList.add('hidden');
+
+  drawGraph(gd, gt);
+  sendHeight();
+}
+
+function drawGraph(dealt, taken){
+  const cv = $('graph');
+  const dpr = window.devicePixelRatio || 1;
+  const W = cv.clientWidth, H = cv.clientHeight;
+  if (cv.width !== W * dpr || cv.height !== H * dpr){ cv.width = W * dpr; cv.height = H * dpr; }
+  const g = cv.getContext('2d');
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.clearRect(0, 0, W, H);
+
+  const max = Math.max(10, ...dealt, ...taken);
+  const top = 6, bottom = H - 4;
+  const X = i => i / (WINDOW - 1) * W;
+  const Y = v => top + (1 - v / max) * (bottom - top);
+
+  // Gitter + Skalenwerte
+  g.strokeStyle = 'rgba(70,79,94,.45)'; g.lineWidth = 1;
+  g.fillStyle = 'rgba(153,164,181,.8)'; g.font = '9px IBM Plex Sans, sans-serif';
+  for (let i = 0; i < 3; i++){
+    const y = top + i / 2 * (bottom - top);
+    g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke();
+    if (i < 2) g.fillText(fmt(max * (1 - i / 2)), 3, y + 9);
+  }
+
+  const line = (arr, color, fill) => {
+    g.beginPath();
+    arr.forEach((v, i) => { const x = X(i), y = Y(v); i ? g.lineTo(x, y) : g.moveTo(x, y); });
+    g.strokeStyle = color; g.lineWidth = 1.6; g.stroke();
+    g.lineTo(W, bottom); g.lineTo(0, bottom); g.closePath();
+    g.fillStyle = fill; g.fill();
+  };
+  line(taken, 'rgba(242,100,122,.95)', 'rgba(242,100,122,.10)');
+  line(dealt, 'rgba(77,163,255,.95)', 'rgba(77,163,255,.12)');
+}
+
+// ---- Session-Zeile (Daten wie im Stream-Widget) ----
+let sessionStartMs = null;
+async function tickSession(){
+  if (!charId || !modules.includes('session')) return;
+  let d;
+  try { d = await (await fetch(`/api/overlay-data?charId=${charId}`)).json(); }
+  catch(e){ return; }
+
+  sessionStartMs = d.active ? Date.now() - d.hours * 3600000 : null;
+  const cell = (label, val, cls) =>
+    `<div class="cell"><div class="label">${label}</div><div class="value ${cls || ''}">${val}</div></div>`;
+  $('sess').innerHTML =
+    cell(tr('session'), d.active ? `<span id="tmr">${clock(d.hours)}</span>` : '–') +
+    '<div class="sep"></div>' +
+    cell(tr('sessIsk'), d.active ? signed(d.delta) : '–', d.delta > 0 ? 'pos' : d.delta < 0 ? 'neg' : '') +
+    '<div class="sep"></div>' +
+    cell(tr('rate'), d.active ? signed(d.iskPerHour) : '–', 'accent');
+  sendHeight();
+}
+const clock = h => {
+  const s = Math.max(0, Math.round(h * 3600));
+  const p = n => String(n).padStart(2, '0');
+  return `${p(Math.floor(s / 3600))}:${p(Math.floor(s / 60) % 60)}:${p(s % 60)}`;
+};
+setInterval(() => {
+  const el = $('tmr');
+  if (el && sessionStartMs !== null) el.textContent = clock((Date.now() - sessionStartMs) / 3600000);
+}, 1000);
+
+function applyLang(){
+  $('lblOut').textContent = tr('dealt');
+  $('lblIn').textContent = tr('taken');
+}
+function applyModules(){
+  $('dps').classList.toggle('hidden', !modules.includes('dps'));
+  $('sess').classList.toggle('hidden', !modules.includes('session'));
+  if (modules.includes('session')) tickSession();
+  sendHeight();
+}
+// Kompakt = schmale Zeile (300 CSS-px breit), Detail = volle Karte (440)
+function applyLayout(){
+  document.body.classList.toggle('compact', layout === 'compact');
+  post('w:' + Math.ceil((layout === 'compact' ? 300 : 440) * window.devicePixelRatio));
+  lastH = 0;   // Höhe neu melden, auch wenn sie zufällig gleich aussieht
+  sendHeight();
+}
+
+applyLang();
+applyModules();
+tickDps();
+tickSession();
+setInterval(tickDps, 1000);      // nur die lokale App, kein Verkehr nach außen
+setInterval(tickSession, 5000);
+window.addEventListener('resize', () => tickDps());
+</script>
+</body>
+</html>

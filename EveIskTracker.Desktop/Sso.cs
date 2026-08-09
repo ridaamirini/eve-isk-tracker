@@ -24,6 +24,8 @@ public static class Sso
         "esi-industry.read_character_jobs.v1",     // Produktionsjobs
         "esi-assets.read_assets.v1",               // Bestände zur Bewertung
         "esi-killmails.read_killmails.v1",         // Kills & Verluste (ISK-Werte via zKillboard)
+        "esi-characters.read_loyalty.v1",          // LP-Stände für den LP-Store-Vergleich
+        "esi-search.search_structures.v1",         // Item-Suche für das Produkt-Research
     };
 
     private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(30) };

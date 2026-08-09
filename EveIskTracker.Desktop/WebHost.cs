@@ -18,6 +18,16 @@ public static class WebHost
     /// <summary>Wird von Program gesetzt; holt bei einem Zweitstart das Fenster nach vorn.</summary>
     public static Action ShowWindow;
 
+    // LP-Auffrischung höchstens alle 5 Minuten automatisch anstoßen
+    private static DateTime _lpLastKick = DateTime.MinValue;
+
+    // Haken zum Game-Overlay-Fenster (von Program verdrahtet, laufen über BeginInvoke)
+    public static Action<bool> SetGameOverlay;
+    public static Action<bool> SetGameOverlayMove;
+    public static Func<bool> GameOverlayVisible;
+    public static Func<bool> GameOverlayMoving;
+    public static Action ApplyGameOverlaySettings;
+
     public static WebApplication Start()
     {
         var builder = WebApplication.CreateBuilder();
@@ -53,8 +63,10 @@ FROM characters ch ORDER BY ch.name"))
                         lastSync = r.IsDBNull(3) ? null : r.GetString(3),
                         enabled = r.GetInt64(4) == 1,
                         sessionActive = r.GetInt64(5) > 0,
-                        // Bestandslogin von vor der Scope-Erweiterung? Dann fehlt Kills.
+                        // Bestandslogins von vor Scope-Erweiterungen: Feature-Flags je Charakter
                         hasKillScope = r.GetString(6).Contains("esi-killmails"),
+                        hasLpScope = r.GetString(6).Contains("esi-characters.read_loyalty"),
+                        hasSearchScope = r.GetString(6).Contains("esi-search"),
                     });
 
             var errors = new List<object>();
@@ -67,7 +79,19 @@ WHERE last_error IS NOT NULL
   AND (character_id = 0 OR character_id IN (SELECT character_id FROM characters WHERE enabled=1))"))
             using (var r = cmd.ExecuteReader())
                 while (r.Read())
-                    errors.Add(new { characterId = r.GetInt64(0), resource = r.GetString(1), error = r.GetString(2) });
+                {
+                    var msg = r.GetString(2);
+                    errors.Add(new
+                    {
+                        characterId = r.GetInt64(0),
+                        resource = r.GetString(1),
+                        error = msg,
+                        // Serverseitige Aussetzer (CCP-Downtime, 5xx, Netz) heilen von
+                        // selbst — die Oberfläche zeigt sie als Hinweis statt als Alarm
+                        transient = msg.Contains("Timeout contacting") || msg.Contains("HTTP 50") ||
+                                    msg.Contains("HTTP 420") || msg.Contains("Netzwerkfehler"),
+                    });
+                }
 
             return Results.Ok(new
             {
@@ -84,6 +108,11 @@ WHERE last_error IS NOT NULL
                 rateHold = Config.RateHoldSeconds,
                 overlayChar = Config.OverlayShowChar,
                 sessionAutoStop = Config.SessionAutoStop,
+                gameOverlayOn = GameOverlayVisible?.Invoke() ?? false,
+                gameOverlayMove = GameOverlayMoving?.Invoke() ?? false,
+                gameOverlayModules = Config.GameOverlayModules,
+                gameOverlayOpacity = Config.GameOverlayOpacity,
+                gameOverlayLayout = Config.GameOverlayLayout,
                 redirectUri = Sso.RedirectUri,
                 scopes = Sso.Scopes,
                 characters = chars,
@@ -107,6 +136,13 @@ WHERE last_error IS NOT NULL
             if (form.TryGetValue("lang", out var lg)) Config.Lang = lg;
             if (form.TryGetValue("overlayChar", out var oc)) Config.OverlayShowChar = oc != "0";
             if (form.TryGetValue("sessionAutoStop", out var sa)) Config.SessionAutoStop = sa != "0";
+            if (form.TryGetValue("gameOverlayModules", out var gm)) Config.GameOverlayModules = gm;
+            if (form.TryGetValue("gameOverlayLayout", out var gl)) Config.GameOverlayLayout = gl;
+            if (form.TryGetValue("gameOverlayOpacity", out var go) && int.TryParse(go, out var gov))
+            {
+                Config.GameOverlayOpacity = gov;
+                ApplyGameOverlaySettings?.Invoke();
+            }
             return Results.Ok(new { ok = true });
         });
 
@@ -587,7 +623,161 @@ WHERE character_id=$c ORDER BY date_utc DESC", ("$c", charId));
                 "text/csv", $"wallet-{charId}.csv");
         });
 
+        // ---- LP-Store-Vergleich ----
+
+        app.MapGet("/api/lp", (long charId, string basis) =>
+        {
+            var hasScope = SyncService.HasScope(charId, "esi-characters.read_loyalty");
+            var corps = LpStore.CorpsWithLp(charId);
+
+            // Bei Bedarf im Hintergrund auffrischen (höchstens alle 5 Minuten anstoßen);
+            // die Antwort kommt sofort aus dem Bestand, die Oberfläche pollt nach
+            if (hasScope && corps.Count > 0 && !LpStore.Busy &&
+                Util.UtcNow - _lpLastKick > TimeSpan.FromMinutes(5))
+            {
+                _lpLastKick = Util.UtcNow;
+                LpStore.KickRefresh(charId);
+            }
+
+            var balances = new List<object>();
+            var lpByCorp = new Dictionary<long, long>();
+            using (var c = Db.Open())
+            using (var cmd = Db.Cmd(c, @"
+SELECT l.corp_id, COALESCE(n.name, '#' || l.corp_id), l.lp
+FROM loyalty l LEFT JOIN names n ON n.id = l.corp_id
+WHERE l.character_id=$c AND l.lp > 0 ORDER BY l.lp DESC", ("$c", charId)))
+            using (var r = cmd.ExecuteReader())
+                while (r.Read())
+                {
+                    lpByCorp[r.GetInt64(0)] = r.GetInt64(2);
+                    balances.Add(new { corpId = r.GetInt64(0), corp = r.GetString(1), lp = r.GetInt64(2) });
+                }
+
+            var offers = LpStore.LoadOffers(corps);
+            var prices = MarketPrices.Load();
+            var names = Analytics.Names();
+
+            var sellBasis = basis != "buy";
+            var computed = new List<(double? IskPerLp, object Row)>();
+            foreach (var o in offers)
+            {
+                var (iskPerLp, profit, value, reqCost) = LpStore.Evaluate(o, prices, sellBasis);
+                lpByCorp.TryGetValue(o.CorpId, out var myLp);
+                computed.Add((iskPerLp, new
+                {
+                    corpId = o.CorpId,
+                    corp = names.GetValueOrDefault(o.CorpId, "#" + o.CorpId),
+                    typeId = o.TypeId,
+                    item = names.GetValueOrDefault(o.TypeId, "#" + o.TypeId),
+                    qty = o.Quantity,
+                    lpCost = o.LpCost,
+                    iskCost = o.IskCost,
+                    reqCost,
+                    value,
+                    profit,
+                    iskPerLp,
+                    // was deine LP bei diesem Angebot insgesamt wert wären
+                    myTotal = iskPerLp.HasValue && o.LpCost > 0
+                        ? Math.Floor((double)myLp / o.LpCost) * profit
+                        : (double?)null,
+                }));
+            }
+
+            return Results.Ok(new
+            {
+                hasScope,
+                busy = LpStore.Busy,
+                progress = LpStore.Progress,
+                error = LpStore.LastError,
+                balances,
+                rows = computed.OrderByDescending(x => x.IskPerLp ?? double.MinValue)
+                               .Select(x => x.Row).Take(400),
+            });
+        });
+
+        app.MapPost("/api/lp/refresh", (long charId) =>
+        {
+            _lpLastKick = Util.UtcNow;
+            LpStore.KickRefresh(charId);
+            return Results.Ok(new { ok = true });
+        });
+
+        // ---- Produkt-Research ----
+
+        app.MapGet("/api/research/search", async (long charId, string q) =>
+        {
+            if (string.IsNullOrWhiteSpace(q) || q.Trim().Length < 3)
+                return Results.Ok(new { fuzzy = false, results = Array.Empty<object>() });
+            try
+            {
+                var esi = new EsiClient(Config.Contact);
+                var (results, fuzzy) = await Research.SearchAsync(esi, charId, q);
+                return Results.Ok(new { fuzzy, results = results.Select(x => new { typeId = x.Id, name = x.Name }) });
+            }
+            catch (Exception ex) { return Results.Ok(new { fuzzy = false, results = Array.Empty<object>(), error = ex.Message }); }
+        });
+
+        app.MapGet("/api/research/item", async (long typeId) =>
+        {
+            var esi = new EsiClient(Config.Contact);
+            var names = await Research.ResolveNames(esi, new[] { typeId });
+            var name = names.GetValueOrDefault(typeId, "#" + typeId);
+            var hubs = await Research.HubPricesAsync(esi, typeId);
+            object industry;
+            try { industry = await Research.IndustryAsync(esi, typeId, name); }
+            catch { industry = new { found = false }; }
+            return Results.Ok(new { typeId, name, hubs, industry });
+        });
+
         app.MapPost("/api/show-window", () => { ShowWindow?.Invoke(); return Results.Ok(); });
+
+        // ---- Game-Overlay (In-Game-HUD mit DPS-Graph) ----
+
+        // Live-Schadensdaten aus dem EVE-Game-Log. Der erste Aufruf weckt den
+        // Log-Mitleser; ohne Abfragen legt er sich nach 5 Minuten wieder schlafen.
+        app.MapGet("/api/dps", (long charId, int? window) =>
+        {
+            var name = Db.Scalar("SELECT name FROM characters WHERE character_id=$c", ("$c", charId));
+            var s = CombatTracker.Snapshot(charId,
+                name == null || name == DBNull.Value ? "" : (string)name,
+                Math.Clamp(window ?? 180, 30, 900));
+            return Results.Ok(new
+            {
+                tracking = s.Tracking,
+                file = s.File,
+                dir = s.Dir,
+                dirExists = s.DirExists,
+                now = Util.ToIso(s.NowUtc),
+                dealt = s.Dealt,
+                taken = s.Taken,
+                totalDealt = s.TotalDealt,
+                totalTaken = s.TotalTaken,
+                lastEvent = s.LastEventUtc == default ? null : Util.ToIso(s.LastEventUtc),
+                // wessen Log gerade mitgelesen wird — folgt automatisch dem aktiven Client;
+                // fehlt der Name im Log-Kopf, hilft die Charakter-Tabelle über die ID aus
+                listener = s.Listener ?? (s.FileCharId > 0
+                    ? Db.Scalar("SELECT name FROM characters WHERE character_id=$c", ("$c", s.FileCharId)) as string
+                    : null),
+                fileCharId = s.FileCharId,
+                // Modul-Auswahl und Sprache wandern mit, damit das Overlay ohne
+                // zweiten Endpunkt auskommt und Änderungen binnen Sekunden greifen
+                modules = Config.GameOverlayModules.Split(','),
+                layout = Config.GameOverlayLayout,
+                lang = Config.Lang,
+            });
+        });
+
+        app.MapPost("/api/gameoverlay/show", (string on) =>
+        {
+            SetGameOverlay?.Invoke(on != "0");
+            return Results.Ok(new { ok = true });
+        });
+
+        app.MapPost("/api/gameoverlay/movemode", (string on) =>
+        {
+            SetGameOverlayMove?.Invoke(on != "0");
+            return Results.Ok(new { ok = true });
+        });
 
         // Wann ist der angezeigte Stand entstanden, wann kommt frischer Nachschub?
         // serverNow wird mitgeliefert, damit der Countdown im Client nicht an einer
@@ -609,6 +799,7 @@ WHERE character_id=$c ORDER BY date_utc DESC", ("$c", charId));
 
         app.MapGet("/", () => ServeEmbedded("index.html"));
         app.MapGet("/overlay", () => ServeEmbedded("overlay.html"));
+        app.MapGet("/gameoverlay", () => ServeEmbedded("gameoverlay.html"));
         app.MapGet("/{file}", (string file) => ServeEmbedded(file));
     }
 

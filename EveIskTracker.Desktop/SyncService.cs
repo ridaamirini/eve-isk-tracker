@@ -29,6 +29,7 @@ public class SyncService : BackgroundService
         ("mining",       600),
         ("jobs",         300),
         ("kills",        300),
+        ("loyalty",     3600),
     };
 
     public SyncService(ILogger<SyncService> log)
@@ -124,6 +125,10 @@ public class SyncService : BackgroundService
                 string token;
                 try { token = await Sso.GetAccessTokenAsync(charId); }
                 catch (Exception ex) { Db.MarkSync(charId, "token", ex.Message); continue; }
+                // Erfolgreicher Token-Abruf räumt einen alten Token-Fehler weg — sonst
+                // bliebe z.B. "bitte neu anmelden" für immer stehen, obwohl der Login
+                // längst wieder funktioniert
+                Db.MarkSync(charId, "token");
 
                 foreach (var (res, seconds) in Plan)
                 {
@@ -143,6 +148,7 @@ public class SyncService : BackgroundService
                             case "mining": await SyncMining(charId, token); break;
                             case "jobs": await SyncJobs(charId, token); break;
                             case "kills": await SyncKills(charId, token); break;
+                            case "loyalty": await SyncLoyalty(charId, token); break;
                         }
                         Db.MarkSync(charId, res);
                     }
@@ -526,6 +532,43 @@ ON CONFLICT(character_id,job_id) DO UPDATE SET status=$st, completed_utc=$cd";
         }
     }
 
+    /// <summary>
+    /// LP-Stände je NPC-Corp. Braucht den Loyalty-Scope — Bestandslogins von vor der
+    /// Scope-Erweiterung werden still übersprungen, bis der Charakter neu angemeldet wird.
+    /// </summary>
+    private async Task SyncLoyalty(long charId, string token)
+    {
+        if (!HasScope(charId, "esi-characters.read_loyalty")) return;
+
+        var r = await _esi.GetAsync($"/v1/characters/{charId}/loyalty/points/", token);
+        if (!r.Ok) throw new EsiException(r.Error);
+        using var doc = JsonDocument.Parse(r.Body);
+
+        using var c = Db.Open();
+        using var tx = c.BeginTransaction();
+        using (var del = c.CreateCommand())
+        {
+            // kompletter Ersatz: verbrauchte LP verschwinden, sonst blieben Leichen stehen
+            del.CommandText = "DELETE FROM loyalty WHERE character_id=$c";
+            del.Parameters.AddWithValue("$c", charId);
+            del.ExecuteNonQuery();
+        }
+        using (var cmd = c.CreateCommand())
+        {
+            cmd.CommandText = "INSERT INTO loyalty(character_id,corp_id,lp,updated_utc) VALUES($c,$o,$l,$u)";
+            var p = Bind(cmd, "$c", "$o", "$l", "$u");
+            foreach (var e in doc.RootElement.EnumerateArray())
+            {
+                p["$c"].Value = charId;
+                p["$o"].Value = e.GetProperty("corporation_id").GetInt64();
+                p["$l"].Value = e.GetProperty("loyalty_points").GetInt64();
+                p["$u"].Value = Util.NowIso();
+                cmd.ExecuteNonQuery();
+            }
+        }
+        tx.Commit();
+    }
+
     private async Task<double> FetchZkbValue(long killmailId)
     {
         try
@@ -682,6 +725,8 @@ SELECT DISTINCT id FROM (
     UNION SELECT victim_ship_type_id FROM kills WHERE victim_ship_type_id IS NOT NULL
     UNION SELECT victim_char_id FROM kills WHERE victim_char_id IS NOT NULL
     UNION SELECT solar_system_id FROM kills WHERE solar_system_id IS NOT NULL
+    UNION SELECT corp_id FROM loyalty
+    UNION SELECT type_id FROM lp_offers
 ) WHERE id IS NOT NULL AND id > 0 AND id NOT IN (SELECT id FROM names) LIMIT 3000"))
         using (var rd = cmd.ExecuteReader())
             while (rd.Read()) missing.Add(rd.GetInt64(0));

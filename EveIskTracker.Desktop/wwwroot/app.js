@@ -42,6 +42,8 @@ const L = {
   unchangedToday: ['heute unverändert', 'unchanged today'],
   in24h: ['in 24h', 'in 24h'],
   esiError: ['ESI · Fehler beim Abgleich', 'ESI · sync error'],
+  esiTransient: ['CCPs Server sind gerade nicht erreichbar (z. B. tägliche Downtime ~13:00–13:15 MESZ). Kein Handlungsbedarf — die Daten aktualisieren sich automatisch, sobald ESI wieder antwortet.',
+                 'CCP\'s servers are currently unreachable (e.g. daily downtime ~11:00–11:15 EVE time). Nothing to do — data updates automatically once ESI responds again.'],
   notConnected: ['NICHT VERBUNDEN', 'NOT CONNECTED'],
   setupHint: ['Noch kein Charakter verbunden — unter <b>Settings</b> mit deinem EVE-Account anmelden.',
               'No character connected yet — sign in with your EVE account under <b>Settings</b>.'],
@@ -117,6 +119,82 @@ const L = {
   overlayNote: ['In Streamlabs als Browser-Quelle mit 420×240 anlegen. Das Widget zeigt ohne laufende Session nur den Kontostand.',
                 'Add as a browser source at 420×240 in Streamlabs. Without an active session the widget only shows the wallet balance.'],
   minOneMetric: ['Mindestens ein Wert muss angezeigt bleiben.', 'At least one value must stay visible.'],
+
+  // LP Store
+  lpSub: ['Was deine Loyalitätspunkte in ISK wert sind · Jita-Preise', 'What your loyalty points are worth in ISK · Jita prices'],
+  thLpIsk: ['ISK-Einsatz', 'ISK cost'],
+  thLpProfit: ['Gewinn', 'Profit'],
+  thLpTotal: ['Deine LP wert', 'Your LP worth'],
+  lpEmpty: ['Noch keine LP-Daten.', 'No LP data yet.'],
+  lpNoLp: ['Keine Loyalitätspunkte gefunden — LP gibt es für Missionen, Incursions und Faction Warfare.',
+           'No loyalty points found — you earn LP from missions, incursions and faction warfare.'],
+  lpScopeBanner: ['Für LP-Daten fehlt deinem Login noch die Berechtigung <code>esi-characters.read_loyalty.v1</code>. Auf developers.eveonline.com die Permission zur Anwendung hinzufügen, dann unter Settings den Charakter neu anmelden.',
+                  'Your login is missing the <code>esi-characters.read_loyalty.v1</code> scope. Add the permission to your application on developers.eveonline.com, then re-sign-in the character under Settings.'],
+  lpLoading: ['Preise werden geladen', 'Loading prices'],
+  lpBasisNote: ['Basis Sell = Verkauf per eigener Order · Buy = Sofortverkauf an Kauforders. Zutaten werden immer zum Sell-Preis eingekauft.',
+                'Sell basis = selling via your own order · Buy = instant-selling to buy orders. Required items are always bought at sell price.'],
+  lpNoPrice: ['kein Marktpreis', 'no market price'],
+  lpReq: ['Zutaten', 'inputs'],
+
+  // Research
+  resSub: ['Wo verkauft sich ein Produkt am besten — und was kostet der Eigenbau?',
+           'Where does a product sell best — and what does building it cost?'],
+  resPh: ['Item suchen, z. B. Rifter …', 'Search an item, e.g. Rifter …'],
+  resSearch: ['Suchen', 'Search'],
+  resNoResults: ['Nichts gefunden. Ohne Such-Berechtigung (Neuanmeldung nötig) muss der Name exakt stimmen.',
+                 'Nothing found. Without the search scope (re-sign-in needed) the name must match exactly.'],
+  resHubs: ['HUB-PREISE', 'HUB PRICES'],
+  thHub: ['Hub', 'Hub'],
+  thSell: ['Sell (günstigste)', 'Sell (lowest)'],
+  thBuy: ['Buy (höchste)', 'Buy (highest)'],
+  thVol: ['Angebot', 'Supply'],
+  thDemand: ['Nachfrage', 'Demand'],
+  resBestSell: ['teuerster Verkauf', 'best place to sell'],
+  resIndustry: ['HERSTELLUNG', 'MANUFACTURING'],
+  resNoBp: ['Keine Blaupause gefunden — das Item ist vermutlich nicht baubar (oder kommt aus Reaktionen/LP-Stores).',
+            'No blueprint found — this item is probably not buildable (or comes from reactions/LP stores).'],
+  resMat: ['Material', 'Material'],
+  resCostPerUnit: ['BAUKOSTEN / STÜCK', 'BUILD COST / UNIT'],
+  resMargin: ['MARGE VS. BESTER HUB', 'MARGIN VS. BEST HUB'],
+  resIndNote: ['Materialien zu Jita-Sell-Preisen, ohne Struktur-/Skill-Boni und Gebühren — also die Obergrenze der Baukosten.',
+               'Materials at Jita sell prices, without structure/skill bonuses and fees — the upper bound of build cost.'],
+  resSearching: ['sucht …', 'searching …'],
+  resLoading: ['lädt Marktdaten …', 'loading market data …'],
+
+  // Game-Overlay-Screen
+  gameOvSub: ['In-Game-HUD über dem EVE-Client · DPS live', 'In-game HUD over the EVE client · live DPS'],
+  gameOvShow: ['Overlay anzeigen', 'Show overlay'],
+  gameOvHide: ['Overlay ausblenden', 'Hide overlay'],
+  gameOvMove: ['Position anpassen', 'Adjust position'],
+  gameOvMoveDone: ['Fertig — Position fixieren', 'Done — lock position'],
+  gameOvPosLabel: ['Position', 'Position'],
+  gameOvPosNote: ['Im Verschieben-Modus verwandelt sich das Overlay in eine Greif-Karte — mit der Maus an die Wunschposition ziehen und „OK" drücken.',
+                  'In move mode the overlay turns into a grab card — drag it where you want it and press "OK".'],
+  gameOvModulesLabel: ['Angezeigte Module', 'Displayed modules'],
+  gameOvLayoutLabel: ['Ansicht', 'View'],
+  layoutDetail: ['Detailliert', 'Detailed'],
+  layoutCompact: ['Kompakt', 'Compact'],
+  gameOvLayoutNote: ['Detailliert = Graph + Summen · Kompakt = schmale Zahlenzeile',
+                     'Detailed = graph + totals · Compact = slim number strip'],
+  gameOvOpacityLabel: ['Deckkraft', 'Opacity'],
+  gameOvIntro: ['Legt sich wie das Discord-Overlay über den EVE-Client: immer im Vordergrund, durchklickbar, stiehlt dem Spiel nie den Fokus. Hotkey <b>Strg + Umschalt + O</b> blendet es jederzeit ein und aus — auch mitten im Spiel.<br>Wichtig: EVE muss im <b>Fenstermodus</b> oder <b>randlosen Vollbild</b> laufen; im exklusiven Vollbild ist kein Overlay sichtbar.',
+               'Sits on top of the EVE client like the Discord overlay: always in front, click-through, never steals focus from the game. Hotkey <b>Ctrl + Shift + O</b> toggles it any time — even mid-fight.<br>Important: EVE must run in <b>windowed</b> or <b>borderless fullscreen</b> mode; nothing can draw over exclusive fullscreen.'],
+  kDpsSource: ['DPS-QUELLE · COMBAT-LOG', 'DPS SOURCE · COMBAT LOG'],
+  gameOvLogNote: ['Der Schadensgraph liest EVEs Game-Logs (Documents\\EVE\\logs\\Gamelogs) live mit — rein lokal, ohne Eingriff ins Spiel. Er folgt automatisch dem zuletzt aktiven Client: wechselst du den Charakter, springt die Anzeige binnen Sekunden aufs neue Log um.',
+                  'The damage graph tails EVE\'s game logs (Documents\\EVE\\logs\\Gamelogs) live — purely local, no game modification. It automatically follows the most recently active client: switch characters and the display jumps to the new log within seconds.'],
+  moduleDps: ['DPS-Graph', 'DPS graph'],
+  moduleSession: ['Session-Werte', 'Session stats'],
+  dpsDirMissing: ['Gamelogs-Ordner nicht gefunden — läuft EVE auf diesem PC? Standardpfad:',
+                  'Gamelogs folder not found — does EVE run on this PC? Default path:'],
+  dpsNoFile: ['Noch kein passendes Game-Log gefunden. EVE starten (oder einmal Schaden machen), dann erscheint es hier.',
+              'No matching game log found yet. Start EVE (or deal some damage) and it will show up here.'],
+  dpsFile: ['Log-Datei', 'Log file'],
+  dpsChar: ['Verfolgter Charakter', 'Tracked character'],
+  dpsLastEvent: ['Letztes Kampf-Ereignis', 'Last combat event'],
+  dpsTotals: ['Schaden seit Client-Start', 'Damage since client start'],
+  dpsDealtShort: ['erteilt', 'dealt'],
+  dpsTakenShort: ['erlitten', 'taken'],
+  dpsNone: ['noch keins', 'none yet'],
 
   // Settings
   addChar: ['Charakter anmelden', 'Sign in character'],
@@ -291,6 +369,11 @@ const pct = v => (v * 100).toFixed(1) + ' %';
 const portraitImg = id =>
   `<img src="https://images.evetech.net/characters/${id}/portrait?size=64" alt="" loading="lazy" onerror="this.remove()">`;
 
+// Item-Icons ebenfalls von CCPs öffentlichem Image-Server; fehlt ein Icon,
+// verschwindet das Bild einfach und der Name steht allein da
+const typeIcon = (id, lg) =>
+  `<img class="ticon${lg ? ' lg' : ''}" src="https://images.evetech.net/types/${id}/icon?size=64" alt="" loading="lazy" onerror="this.remove()">`;
+
 // ---------- SVG-Charts (Flächenlinie wie im Design) ----------
 
 let gradSeq = 0;
@@ -413,8 +496,12 @@ async function loadStatus() {
       <div><div>${esc(c.name)}</div><div class="sub">${fmtIsk(c.balance)} ISK</div></div>
     </div>`).join('') || `<div class="char-opt"><div class="sub">${t('noCharYet')}</div></div>`;
 
-  // LIVE-Tag: verbunden, wenn eingerichtet und der letzte Abgleich fehlerfrei war
-  const errs = (st.errors || []).filter(e => e.error);
+  // LIVE-Tag: verbunden, wenn eingerichtet und der letzte Abgleich fehlerfrei war.
+  // Vorübergehende Aussetzer (CCP-Downtime, 5xx) zählen nicht als "Fehler" —
+  // die heilen beim nächsten Abgleich von selbst und bekommen nur einen Hinweis.
+  const allErrs = (st.errors || []).filter(e => e.error);
+  const errs = allErrs.filter(e => !e.transient);
+  const transient = allErrs.filter(e => e.transient);
   const live = st.configured && chars.length > 0 && errs.length === 0;
   $('liveTag').className = 'tag ' + (live ? 'tag-accent' : 'tag-off');
   $('liveTag').textContent = live ? 'LIVE · ESI connected' : (st.configured ? t('esiError') : t('notConnected'));
@@ -422,6 +509,7 @@ async function loadStatus() {
   $('dashBanners').innerHTML =
     (!st.configured || chars.length === 0
       ? `<div class="banner info">${t('setupHint')}</div>` : '') +
+    (transient.length ? `<div class="banner info">${t('esiTransient')}</div>` : '') +
     errs.map(e => `<div class="banner err"><b>${esc(e.resource)}</b>: ${esc(e.error)}</div>`).join('');
 
   // Timing-Karte: aktive Glättungsstufe markieren
@@ -877,9 +965,273 @@ $('metricToggles').addEventListener('click', async e => {
   } catch (err) { alert(t('saveFail') + err.message); }
 });
 
+// ---------- LP Store (ISK pro LP) ----------
+
+S.lpBasis = 'sell';
+
+async function loadLpScreen() {
+  if (!S.charId) return;
+  const d = await api(`/api/lp?charId=${S.charId}&basis=${S.lpBasis}`);
+  const me = S.status && S.status.characters.find(c => c.characterId === S.charId);
+
+  $('lpProgress').textContent = d.busy ? `${t('lpLoading')} … ${d.progress || ''}` : '';
+
+  $('lpBanners').innerHTML =
+    (me && !me.hasLpScope ? `<div class="banner info">${t('lpScopeBanner')}</div>` : '') +
+    (d.error ? `<div class="banner err">${esc(d.error)}</div>` : '') +
+    (me && me.hasLpScope && !d.balances.length ? `<div class="banner info">${t('lpNoLp')}</div>` : '');
+
+  $('lpBalances').innerHTML = d.balances.map(b =>
+    `<span class="tag tag-accent">${esc(b.corp)} · ${nloc(b.lp)} LP</span>`).join('') +
+    (d.balances.length ? `<span class="head-note" style="align-self:center;margin-left:8px">${t('lpBasisNote')}</span>` : '');
+
+  const max = d.rows.length && d.rows[0].iskPerLp != null ? d.rows[0].iskPerLp : 1;
+  $('lpRows').innerHTML = d.rows.length ? d.rows.map((r, i) => `
+    <tr>
+      <td class="head-note">${r.iskPerLp != null ? i + 1 : '–'}</td>
+      <td>${typeIcon(r.typeId)}${esc(r.item)}${r.qty > 1 ? ` <span class="head-note">×${nloc(r.qty)}</span>` : ''}
+        ${r.reqCost > 0 ? `<div class="head-note" style="font-size:11px">+ ${t('lpReq')} ${fmtIsk(r.reqCost)}</div>` : ''}</td>
+      <td class="head-note" style="font-size:12px">${esc(r.corp)}</td>
+      <td class="num">${nloc(r.lpCost)}</td>
+      <td class="num mono">${r.iskCost > 0 ? fmtIsk(r.iskCost) : '—'}</td>
+      <td class="num mono ${r.profit > 0 ? 'acc' : ''}">${r.profit != null ? signed(r.profit) : `<span class="head-note">${t('lpNoPrice')}</span>`}</td>
+      <td class="num">
+        <div class="mono" style="font-weight:600">${r.iskPerLp != null ? nloc(Math.round(r.iskPerLp)) : '—'}</div>
+        <div class="bar" style="margin-top:4px"><div class="bar-fill" style="width:${r.iskPerLp != null ? Math.max(1, Math.round(r.iskPerLp / max * 100)) : 0}%"></div></div>
+      </td>
+      <td class="num mono ${r.myTotal > 0 ? 'pos' : ''}">${r.myTotal != null && r.myTotal > 0 ? fmtIsk(r.myTotal) : '—'}</td>
+    </tr>`).join('') : `<tr><td colspan="8" class="empty">${t('lpEmpty')}</td></tr>`;
+
+  // Solange Preise laden, automatisch nachfassen
+  if (d.busy && S.screen === 'lp') setTimeout(() => { if (S.screen === 'lp') loadLpScreen().catch(() => {}); }, 3000);
+}
+
+$('lpBasis').addEventListener('click', e => {
+  const b = e.target.closest('.seg-opt'); if (!b) return;
+  S.lpBasis = b.dataset.b;
+  document.querySelectorAll('#lpBasis .seg-opt').forEach(x => x.classList.toggle('on', x === b));
+  loadLpScreen();
+});
+
+// ---------- Research (Hub-Preise + Herstellungskosten) ----------
+
+async function loadResearchScreen() {
+  // Deep-Link: /?item=587#research lädt ein Item direkt (auch praktisch für Doku)
+  const it = new URLSearchParams(location.search).get('item');
+  if (it && !$('resItem').innerHTML)
+    loadResearchItem(Number(it)).catch(() => {});
+}
+
+async function runResearchSearch() {
+  const q = $('resQuery').value.trim();
+  if (q.length < 3 || !S.charId) return;
+  $('resResults').innerHTML = `<span class="head-note">${t('resSearching')}</span>`;
+  try {
+    const d = await api(`/api/research/search?charId=${S.charId}&q=${encodeURIComponent(q)}`);
+    $('resResults').innerHTML = d.results.length
+      ? d.results.map(x => `<span class="tag tag-neutral click" data-restype="${x.typeId}">${typeIcon(x.typeId)}${esc(x.name)}</span>`).join('')
+      : `<span class="head-note">${t('resNoResults')}</span>`;
+  } catch (e) { $('resResults').innerHTML = `<span class="head-note">${esc(e.message)}</span>`; }
+}
+
+async function loadResearchItem(typeId) {
+  $('resItem').innerHTML = `<div class="card pad"><div class="empty">${t('resLoading')}</div></div>`;
+  const d = await api(`/api/research/item?typeId=${typeId}`);
+
+  const sells = d.hubs.filter(h => h.sell != null);
+  const bestSell = sells.length ? Math.max(...sells.map(h => h.sell)) : null;
+  // Stationsname der jeweils besten Order, klein unter dem Preis
+  const stn = s => s
+    ? `<div class="head-note" style="font-size:10px;max-width:230px;margin-left:auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(s)}">${esc(s)}</div>`
+    : '';
+  const hubRows = d.hubs.map(h => `
+    <tr>
+      <td>${esc(h.hub)}${h.sell != null && h.sell === bestSell ? ` <span class="tag tag-accent" style="font-size:10px">${t('resBestSell')}</span>` : ''}</td>
+      <td class="num mono ${h.sell != null && h.sell === bestSell ? 'acc' : ''}">${h.sell != null ? nloc(Math.round(h.sell)) : '—'}${stn(h.sellStation)}</td>
+      <td class="num mono">${h.buy != null ? nloc(Math.round(h.buy)) : '—'}${stn(h.buyStation)}</td>
+      <td class="num head-note">${nloc(h.sellVol)}</td>
+      <td class="num head-note">${nloc(h.buyVol)}</td>
+    </tr>`).join('');
+
+  let indHtml;
+  const ind = d.industry;
+  if (!ind || !ind.found) {
+    indHtml = `<div class="head-note">${t('resNoBp')}</div>`;
+  } else {
+    const matRows = ind.materials.map(m => `
+      <tr><td>${typeIcon(m.typeId)}${esc(m.name)}</td><td class="num">${nloc(m.qty)}</td>
+      <td class="num mono">${m.unit != null ? nloc(Math.round(m.unit)) : '—'}</td>
+      <td class="num mono">${m.cost != null ? fmtIsk(m.cost) : `<span class="head-note">${t('lpNoPrice')}</span>`}</td></tr>`).join('');
+    const margin = ind.costPerUnit != null && bestSell != null ? bestSell - ind.costPerUnit : null;
+    indHtml = `
+      ${tileGrid(
+        tile(t('resCostPerUnit'), ind.costPerUnit != null ? fmtIsk(ind.costPerUnit) : '—', '', ind.outputQty > 1 ? `${nloc(ind.outputQty)}/Run` : '1/Run') +
+        tile(t('resMargin'), margin != null ? signed(margin) : '—', margin != null ? cls(margin) : '',
+             margin != null && ind.costPerUnit > 0 ? pct(margin / ind.costPerUnit) : ''))}
+      <div class="tablewrap"><table class="table">
+        <thead><tr><th>${t('resMat')}</th><th class="num">${t('thQty')}</th><th class="num">${t('thUnitPrice')}</th><th class="num">${t('thCost')}</th></tr></thead>
+        <tbody>${matRows}</tbody>
+      </table></div>
+      <div class="head-note" style="margin-top:10px">${t('resIndNote')}</div>`;
+  }
+
+  $('resItem').innerHTML = `
+    <div class="card pad" style="margin-bottom:14px">
+      <div class="row" style="margin-bottom:10px">
+        <span class="kicker">${t('resHubs')}</span>
+        <span style="margin-left:auto;display:flex;align-items:center;font-size:14px">${typeIcon(d.typeId, true)}${esc(d.name)}</span>
+      </div>
+      <div class="tablewrap"><table class="table">
+        <thead><tr><th>${t('thHub')}</th><th class="num">${t('thSell')}</th><th class="num">${t('thBuy')}</th><th class="num">${t('thVol')}</th><th class="num">${t('thDemand')}</th></tr></thead>
+        <tbody>${hubRows}</tbody>
+      </table></div>
+    </div>
+    <div class="card pad">
+      <span class="kicker">${t('resIndustry')}</span>
+      <div style="margin-top:10px">${indHtml}</div>
+    </div>`;
+}
+
+$('btnResSearch').addEventListener('click', runResearchSearch);
+$('resQuery').addEventListener('keydown', e => { if (e.key === 'Enter') runResearchSearch(); });
+$('resResults').addEventListener('click', e => {
+  const b = e.target.closest('[data-restype]');
+  if (b) loadResearchItem(Number(b.dataset.restype)).catch(err => {
+    $('resItem').innerHTML = `<div class="banner err">${esc(err.message)}</div>`;
+  });
+});
+
+// ---------- Game-Overlay-Screen (In-Game-HUD) ----------
+
+const GAME_OV_MODULES = () => [
+  { key: 'dps', name: t('moduleDps') },
+  { key: 'session', name: t('moduleSession') },
+];
+const activeGameOvModules = () =>
+  ((S.status && S.status.gameOverlayModules) || 'dps,session').split(',').filter(Boolean);
+
+function renderGameOvControls() {
+  const st = S.status;
+  if (!st) return;
+  const btn = $('btnGameOv');
+  btn.textContent = st.gameOverlayOn ? t('gameOvHide') : t('gameOvShow');
+  btn.className = 'btn ' + (st.gameOverlayOn ? 'btn-secondary' : 'btn-primary');
+  $('btnGameOvMove').textContent = st.gameOverlayMove ? t('gameOvMoveDone') : t('gameOvMove');
+
+  const act = activeGameOvModules();
+  $('gameOvModules').innerHTML = GAME_OV_MODULES().map(m =>
+    `<span class="tag ${act.includes(m.key) ? 'tag-accent' : 'tag-off'} click" data-gomod="${m.key}">${m.name}</span>`).join('');
+
+  document.querySelectorAll('#gameOvLayout .seg-opt').forEach(x =>
+    x.classList.toggle('on', x.dataset.layout === (st.gameOverlayLayout || 'detail')));
+
+  // Regler nur setzen, solange der Nutzer ihn nicht gerade zieht
+  const slider = $('gameOvOpacity');
+  if (document.activeElement !== slider) {
+    slider.value = st.gameOverlayOpacity || 95;
+    $('gameOvOpacityVal').textContent = slider.value + ' %';
+  }
+}
+
+async function refreshDpsStatus() {
+  if (!S.charId) return;
+  const d = await api(`/api/dps?charId=${S.charId}&window=60`);
+  const row = (label, value) => `
+    <div class="list-row">
+      <div class="list-main"><div class="list-sub">${label}</div><div class="list-title">${value}</div></div>
+    </div>`;
+  let html = '';
+  if (!d.dirExists)
+    html = `<div class="banner err">${t('dpsDirMissing')} <code>${esc(d.dir)}</code></div>`;
+  else if (!d.tracking)
+    html = `<div class="banner info">${t('dpsNoFile')}</div>`;
+  else
+    html = row(t('dpsChar'), esc(d.listener || (d.fileCharId ? '#' + d.fileCharId : '—'))) +
+           row(t('dpsFile'), esc(d.file)) +
+           row(t('dpsLastEvent'), d.lastEvent ? fmtTime(d.lastEvent) : t('dpsNone')) +
+           row(t('dpsTotals'), `${fmtIsk(d.totalDealt)} ${t('dpsDealtShort')} · ${fmtIsk(d.totalTaken)} ${t('dpsTakenShort')}`);
+  $('dpsStatus').innerHTML = html;
+}
+
+async function loadGameOverlayScreen() {
+  renderGameOvControls();
+  try { await refreshDpsStatus(); } catch (e) { /* App fragt gleich erneut */ }
+}
+
+// Log-Status alle 3 s auffrischen, solange die Seite offen ist
+setInterval(() => {
+  if (S.screen === 'gameoverlay') refreshDpsStatus().catch(() => {});
+}, 3000);
+
+$('btnGameOv').addEventListener('click', async () => {
+  const on = S.status && S.status.gameOverlayOn;
+  try {
+    await api(`/api/gameoverlay/show?on=${on ? 0 : 1}`, { method: 'POST' });
+    await loadStatus();
+    renderGameOvControls();
+  } catch (e) { alert(t('saveFail') + e.message); }
+});
+
+$('btnGameOvMove').addEventListener('click', async () => {
+  const moving = S.status && S.status.gameOverlayMove;
+  try {
+    await api(`/api/gameoverlay/movemode?on=${moving ? 0 : 1}`, { method: 'POST' });
+    await loadStatus();
+    renderGameOvControls();
+  } catch (e) { alert(t('saveFail') + e.message); }
+});
+
+$('gameOvModules').addEventListener('click', async e => {
+  const tgt = e.target.closest('[data-gomod]');
+  if (!tgt) return;
+  const act = activeGameOvModules();
+  const key = tgt.dataset.gomod;
+  const next = act.includes(key) ? act.filter(k => k !== key) : [...act, key];
+  if (!next.length) { alert(t('minOneMetric')); return; }
+  try {
+    await api('/api/config', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ gameOverlayModules: next.join(',') }),
+    });
+    S.status.gameOverlayModules = GAME_OV_MODULES().map(m => m.key).filter(k => next.includes(k)).join(',');
+    renderGameOvControls();
+  } catch (err) { alert(t('saveFail') + err.message); }
+});
+
+$('gameOvLayout').addEventListener('click', async e => {
+  const b = e.target.closest('[data-layout]');
+  if (!b) return;
+  try {
+    await api('/api/config', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ gameOverlayLayout: b.dataset.layout }),
+    });
+    if (S.status) S.status.gameOverlayLayout = b.dataset.layout;
+    renderGameOvControls();
+  } catch (err) { alert(t('saveFail') + err.message); }
+});
+
+// Deckkraft-Regler: Anzeige sofort, Speichern leicht gedrosselt — das Overlay
+// übernimmt den Wert live, während man zieht
+let opacityTimer = null;
+$('gameOvOpacity').addEventListener('input', e => {
+  const v = e.target.value;
+  $('gameOvOpacityVal').textContent = v + ' %';
+  clearTimeout(opacityTimer);
+  opacityTimer = setTimeout(async () => {
+    try {
+      await api('/api/config', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ gameOverlayOpacity: v }),
+      });
+      if (S.status) S.status.gameOverlayOpacity = Number(v);
+    } catch (err) { /* nächster Zug speichert erneut */ }
+  }, 150);
+});
+
 // ---------- Navigation & Ereignisse ----------
 
-const loaders = { dash: loadDash, wallet: loadWallet, reports: loadReports, ores: loadOres, overlay: loadOverlayScreen, settings: async () => {} };
+const loaders = { dash: loadDash, wallet: loadWallet, reports: loadReports, ores: loadOres, lp: loadLpScreen, research: loadResearchScreen, overlay: loadOverlayScreen, gameoverlay: loadGameOverlayScreen, settings: async () => {} };
 
 async function showScreen(key) {
   S.screen = key;

@@ -30,7 +30,10 @@
       <div class="nav-item" data-screen="wallet"><i class="ph ph-wallet"></i>Wallet</div>
       <div class="nav-item" data-screen="reports"><i class="ph ph-chart-bar"></i>Reports</div>
       <div class="nav-item" data-screen="ores"><i class="ph ph-diamonds-four"></i>Ores</div>
+      <div class="nav-item" data-screen="lp"><i class="ph ph-medal"></i>LP Store</div>
+      <div class="nav-item" data-screen="research"><i class="ph ph-magnifying-glass"></i>Research</div>
       <div class="nav-item" data-screen="overlay"><i class="ph ph-broadcast"></i>Stream Overlay</div>
+      <div class="nav-item" data-screen="gameoverlay"><i class="ph ph-picture-in-picture"></i>Game Overlay</div>
       <div class="nav-item" data-screen="settings"><i class="ph ph-gear-six"></i>Settings</div>
     </nav>
     <div class="side-bottom">
@@ -218,6 +221,58 @@
       </div>
     </div>
 
+    <!-- ========== LP Store (ISK pro LP, eigene LP-Stände) ========== -->
+    <div class="screen hidden" id="screen-lp">
+      <div class="page-head">
+        <h1>LP Store</h1>
+        <span class="head-note" data-i18n="lpSub">Was deine Loyalitätspunkte in ISK wert sind · Jita-Preise</span>
+        <span class="head-note" id="lpProgress" style="margin-left:auto"></span>
+        <div class="seg" id="lpBasis">
+          <span class="seg-opt on" data-b="sell">Sell</span>
+          <span class="seg-opt" data-b="buy">Buy</span>
+        </div>
+      </div>
+      <div class="head-rule"></div>
+
+      <div id="lpBanners"></div>
+      <div class="tagrow" id="lpBalances" style="margin-bottom:14px"></div>
+
+      <div class="card" style="padding:4px 0">
+        <div class="tablewrap"><table class="table">
+          <thead><tr>
+            <th style="width:36px">#</th>
+            <th>Item</th>
+            <th>Corp</th>
+            <th class="num">LP</th>
+            <th class="num" data-i18n="thLpIsk">ISK-Einsatz</th>
+            <th class="num" data-i18n="thLpProfit">Gewinn</th>
+            <th class="num" style="width:26%">ISK / LP</th>
+            <th class="num" data-i18n="thLpTotal">Deine LP wert</th>
+          </tr></thead>
+          <tbody id="lpRows"><tr><td colspan="8" class="empty" data-i18n="lpEmpty">Noch keine LP-Daten.</td></tr></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <!-- ========== Research (Hub-Preise + Herstellungskosten) ========== -->
+    <div class="screen hidden" id="screen-research">
+      <div class="page-head">
+        <h1>Research</h1>
+        <span class="head-note" data-i18n="resSub">Wo verkauft sich ein Produkt am besten — und was kostet der Eigenbau?</span>
+      </div>
+      <div class="head-rule"></div>
+
+      <div class="card pad" style="margin-bottom:14px">
+        <div style="display:flex;gap:8px">
+          <input class="input" id="resQuery" data-i18n-ph="resPh" placeholder="Item suchen, z. B. Rifter …" style="flex:1">
+          <button class="btn btn-primary" id="btnResSearch"><i class="ph ph-magnifying-glass"></i> <span data-i18n="resSearch">Suchen</span></button>
+        </div>
+        <div class="tagrow" id="resResults" style="margin-top:10px"></div>
+      </div>
+
+      <div id="resItem"></div>
+    </div>
+
     <!-- ========== Stream Overlay ========== -->
     <div class="screen hidden" id="screen-overlay">
       <div class="page-head">
@@ -263,6 +318,63 @@
               <button class="btn btn-secondary" id="btnSaveTxt" style="margin-top:8px;font-size:12px" data-i18n="savePath">Pfad speichern</button>
             </div>
             <div class="head-note" style="line-height:1.5" data-i18n="overlayNote">In Streamlabs als Browser-Quelle mit 420×240 anlegen. Das Widget zeigt ohne laufende Session nur den Kontostand.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== Game Overlay (In-Game-HUD über dem EVE-Client) ========== -->
+    <div class="screen hidden" id="screen-gameoverlay">
+      <div class="page-head">
+        <h1>Game Overlay</h1>
+        <span class="head-note" data-i18n="gameOvSub">In-Game-HUD über dem EVE-Client · DPS live</span>
+        <button class="btn btn-primary" style="margin-left:auto" id="btnGameOv">–</button>
+      </div>
+      <div class="head-rule"></div>
+
+      <div class="grid-main">
+        <div class="card pad">
+          <span class="kicker">IN-GAME OVERLAY</span>
+          <div class="head-note" style="margin-top:8px;line-height:1.55" data-i18n-html="gameOvIntro">
+            Legt sich wie das Discord-Overlay über den EVE-Client: immer im Vordergrund,
+            durchklickbar, stiehlt dem Spiel nie den Fokus. Hotkey <b>Strg + Umschalt + O</b>
+            blendet es jederzeit ein und aus — auch mitten im Spiel.<br>
+            Wichtig: EVE muss im <b>Fenstermodus</b> oder <b>randlosen Vollbild</b> laufen;
+            im exklusiven Vollbild ist kein Overlay sichtbar.
+          </div>
+          <div class="fields">
+            <div class="field"><label data-i18n="gameOvPosLabel">Position</label>
+              <button class="btn btn-secondary" id="btnGameOvMove" style="font-size:12px">–</button>
+              <div class="head-note" style="margin-top:6px" data-i18n="gameOvPosNote">Im Verschieben-Modus verwandelt sich das Overlay in eine Greif-Karte — mit der Maus an die Wunschposition ziehen und „OK" drücken.</div>
+            </div>
+            <div class="field"><label data-i18n="gameOvLayoutLabel">Ansicht</label>
+              <div class="seg" id="gameOvLayout">
+                <span class="seg-opt" data-layout="detail" data-i18n="layoutDetail">Detailliert</span>
+                <span class="seg-opt" data-layout="compact" data-i18n="layoutCompact">Kompakt</span>
+              </div>
+              <div class="head-note" style="margin-top:6px" data-i18n="gameOvLayoutNote">Detailliert = Graph + Summen · Kompakt = schmale Zahlenzeile</div>
+            </div>
+            <div class="field"><label><span data-i18n="gameOvModulesLabel">Angezeigte Module</span> <span class="head-note" data-i18n="metricsHint">(anklicken zum An-/Abwählen)</span></label>
+              <div class="tagrow" id="gameOvModules"></div>
+            </div>
+            <div class="field"><label data-i18n="gameOvOpacityLabel">Deckkraft</label>
+              <div style="display:flex;gap:12px;align-items:center">
+                <input type="range" id="gameOvOpacity" min="10" max="100" step="1" value="95"
+                       style="flex:1;accent-color:var(--color-accent)">
+                <span class="head-note" id="gameOvOpacityVal" style="width:44px;text-align:right;font-variant-numeric:tabular-nums">95 %</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card pad">
+          <span class="kicker" data-i18n="kDpsSource">DPS-QUELLE · COMBAT-LOG</span>
+          <div id="dpsStatus" class="fields" style="margin-top:8px"></div>
+          <div class="head-note" style="margin-top:10px;line-height:1.55" data-i18n="gameOvLogNote">
+            Der Schadensgraph liest EVEs Game-Logs (Documents\EVE\logs\Gamelogs) live mit —
+            rein lokal, ohne Eingriff ins Spiel. Er folgt automatisch dem zuletzt aktiven
+            Client: wechselst du den Charakter, springt die Anzeige binnen Sekunden aufs
+            neue Log um.
           </div>
         </div>
       </div>
