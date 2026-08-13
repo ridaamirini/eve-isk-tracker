@@ -50,6 +50,9 @@
   .value.pos{color:#4dd398}
   .value.neg{color:var(--red)}
   .sep{width:1px;background:linear-gradient(180deg,transparent,var(--n700),transparent)}
+  /* Klartext statt stummer Striche, wenn keine Session/kein Charakter da ist */
+  .sessnote{flex:1;align-self:center;font-size:10px;line-height:1.35;color:var(--n400);text-align:center}
+  .sessnote.side{text-align:left;padding-left:10px;border-left:1px solid var(--n700)}
   .hidden{display:none!important}
 
   /* Kompakt-Ansicht: schmale Zahlenzeile ohne Graph und Summen */
@@ -100,6 +103,10 @@ const T = {
   session: ['SESSION', 'SESSION'],
   sessIsk: ['SESSION-ISK', 'SESSION ISK'],
   rate:    ['ISK/STUNDE', 'ISK/HOUR'],
+  wallet:  ['WALLET', 'WALLET'],
+  noSess:  ['Keine Session gestartet', 'No session started'],
+  noChar:  ['Kein Charakter angemeldet', 'No character signed in'],
+  noApp:   ['Keine Verbindung zum Tracker', 'No connection to the tracker'],
 };
 const tr = k => T[k][LANG === 'en' ? 1 : 0];
 const $ = id => document.getElementById(id);
@@ -240,17 +247,33 @@ async function tickSession(){
   if (!modules.includes('session')) return;
   let d;
   try { d = await (await fetch('/api/overlay-data')).json(); }
-  catch(e){ return; }
+  catch(e){
+    // Tracker nicht erreichbar: sagen statt stumm leere Zellen zeigen
+    sessionStartMs = null;
+    $('sess').innerHTML = `<div class="sessnote">${tr('noApp')}</div>`;
+    sendHeight();
+    return;
+  }
 
   sessionStartMs = d.active ? Date.now() - d.hours * 3600000 : null;
   const cell = (label, val, cls) =>
     `<div class="cell"><div class="label">${label}</div><div class="value ${cls || ''}">${val}</div></div>`;
-  $('sess').innerHTML =
-    cell(tr('session'), d.active ? `<span id="tmr">${clock(d.hours)}</span>` : '–') +
-    '<div class="sep"></div>' +
-    cell(tr('sessIsk'), d.active ? signed(d.delta) : '–', d.delta > 0 ? 'pos' : d.delta < 0 ? 'neg' : '') +
-    '<div class="sep"></div>' +
-    cell(tr('rate'), d.active ? signed(d.iskPerHour) : '–', 'accent');
+  const sep = '<div class="sep"></div>';
+
+  if (!d.charId) {
+    $('sess').innerHTML = `<div class="sessnote">${tr('noChar')}</div>`;
+  } else if (!d.active) {
+    // Ohne Session gäbe es sonst nur Striche — Kontostand zeigen und sagen,
+    // warum die Session-Zahlen fehlen (häufigste Verwechslung mit "läuft nicht")
+    $('sess').innerHTML =
+      cell(tr('wallet'), fmt(d.balance)) +
+      `<div class="sessnote side">${tr('noSess')}</div>`;
+  } else {
+    $('sess').innerHTML =
+      cell(tr('session'), `<span id="tmr">${clock(d.hours)}</span>`) + sep +
+      cell(tr('sessIsk'), signed(d.delta), d.delta > 0 ? 'pos' : d.delta < 0 ? 'neg' : '') + sep +
+      cell(tr('rate'), signed(d.iskPerHour), 'accent');
+  }
   sendHeight();
 }
 const clock = h => {
