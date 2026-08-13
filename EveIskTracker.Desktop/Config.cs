@@ -135,6 +135,29 @@ public static class Config
         set => Db.SetKv("gameoverlay_pos", value);
     }
 
+    /// <summary>
+    /// Der in der App gewählte Charakter. Alle Overlays (Stream-Widget, DPS-Quelle,
+    /// Game-Overlay) hängen daran, damit ein Wechsel unten links sofort überall wirkt —
+    /// OBS-Quellen müssen dafür nicht angefasst werden.
+    /// Fällt auf den ersten aktiven Charakter zurück, solange nichts gewählt wurde.
+    /// </summary>
+    public static long ActiveCharacterId
+    {
+        get
+        {
+            var own = Db.GetKv("active_char");
+            if (long.TryParse(own, out var id) && id > 0)
+            {
+                // gewählter Charakter könnte inzwischen entfernt worden sein
+                var still = Db.Scalar("SELECT character_id FROM characters WHERE character_id=$c AND enabled=1", ("$c", id));
+                if (still != null && still != DBNull.Value) return id;
+            }
+            var first = Db.Scalar("SELECT character_id FROM characters WHERE enabled=1 ORDER BY name LIMIT 1");
+            return first == null || first == DBNull.Value ? 0 : (long)first;
+        }
+        set => Db.SetKv("active_char", value.ToString());
+    }
+
     /// <summary>Oberflächensprache: "de" oder "en". Standard Englisch (internationales Publikum).</summary>
     public static string Lang
     {

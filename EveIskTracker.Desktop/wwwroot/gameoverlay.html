@@ -127,16 +127,8 @@ function sendHeight(){
   if (h !== lastH && h > 0) { lastH = h; post('h:' + h); }
 }
 
-// ---- Charakter auflösen: erster aktiver Charakter der App ----
-let charId = new URLSearchParams(location.search).get('charId');
-async function resolveChar(){
-  if (charId) return;
-  try {
-    const st = await (await fetch('/api/status')).json();
-    const c = (st.characters || []).find(x => x.enabled) || (st.characters || [])[0];
-    if (c) charId = c.characterId;
-  } catch(e){}
-}
+// Das Game-Overlay folgt immer dem in der App gewählten Charakter — die Endpunkte
+// lösen ihn ohne charId-Parameter selbst auf.
 
 // ---- DPS ----
 let modules = ['dps', 'session'];
@@ -147,10 +139,9 @@ const SMOOTHW = 7, EDGE = 3;
 let series = null;   // letzter Datenstand + Zeitstempel fürs flüssige Scrollen
 
 async function tickDps(){
-  if (!charId) { await resolveChar(); if (!charId) return; }
   let d;
   try {
-    d = await (await fetch(`/api/dps?charId=${charId}&window=${WINDOW + SMOOTH + SMOOTHW + EDGE + 1}`)).json();
+    d = await (await fetch(`/api/dps?window=${WINDOW + SMOOTH + SMOOTHW + EDGE + 1}`)).json();
   } catch(e){ return; }
 
   if ((d.lang || 'de') !== LANG){ LANG = d.lang; applyLang(); }
@@ -246,9 +237,9 @@ function drawGraph(){
 // ---- Session-Zeile (Daten wie im Stream-Widget) ----
 let sessionStartMs = null;
 async function tickSession(){
-  if (!charId || !modules.includes('session')) return;
+  if (!modules.includes('session')) return;
   let d;
-  try { d = await (await fetch(`/api/overlay-data?charId=${charId}`)).json(); }
+  try { d = await (await fetch('/api/overlay-data')).json(); }
   catch(e){ return; }
 
   sessionStartMs = d.active ? Date.now() - d.hours * 3600000 : null;

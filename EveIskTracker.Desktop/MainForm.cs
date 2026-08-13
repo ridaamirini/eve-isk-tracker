@@ -141,15 +141,12 @@ public class MainForm : Form
 
     private void CopyOverlayUrl()
     {
-        // Ersten Charakter aus der Datenbank nehmen; ohne Charakter Platzhalter kopieren
-        var id = Db.Scalar("SELECT character_id FROM characters WHERE enabled=1 ORDER BY name LIMIT 1");
-        var url = $"http://localhost:{Config.Port}/overlay?charId=" +
-                  (id == null || id == DBNull.Value ? "<ID>" : id.ToString());
+        // Ohne charId: die Quelle folgt dem in der App gewählten Charakter
         try
         {
-            Clipboard.SetText(url);
+            Clipboard.SetText($"http://localhost:{Config.Port}/overlay");
             _tray.ShowBalloonTip(2500, "EVE ISK Tracker",
-                "Widget-URL kopiert — in Streamlabs als Browser-Quelle (1920×1080) einfügen.",
+                "Widget-URL kopiert — in Streamlabs als Browser-Quelle einfügen.",
                 ToolTipIcon.Info);
         }
         catch { }

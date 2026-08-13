@@ -253,11 +253,16 @@ public static class CombatTracker
             .OrderByDescending(f => f.LastWriteTimeUtc).Take(12).ToList();
         if (files.Count == 0) return null;
 
+        // Der gewählte Charakter hat Vorrang, solange sein Client wirklich schreibt —
+        // beim Multiboxing gewinnt sonst der andere Client die Anzeige
+        var suffix = "_" + _charId + ".txt";
+        var byId = files.FirstOrDefault(f => f.Name.EndsWith(suffix, StringComparison.OrdinalIgnoreCase));
+        if (byId != null && byId.LastWriteTimeUtc > DateTime.UtcNow.AddMinutes(-10))
+            return byId.FullName;
+
         if (files[0].LastWriteTimeUtc > DateTime.UtcNow.AddMinutes(-10))
             return files[0].FullName;
 
-        var suffix = "_" + _charId + ".txt";
-        var byId = files.FirstOrDefault(f => f.Name.EndsWith(suffix, StringComparison.OrdinalIgnoreCase));
         if (byId != null) return byId.FullName;
 
         if (!string.IsNullOrEmpty(_charName))

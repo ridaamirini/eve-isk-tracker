@@ -117,8 +117,8 @@ const L = {
              'Values only change on real wallet updates (~every 2 min); ISK/h is recalculated at most every 5 min so nothing creeps on stream'],
   txtLabel: ['Alternative: Textdatei für Textquellen', 'Alternative: text file for text sources'],
   savePath: ['Pfad speichern', 'Save path'],
-  overlayNote: ['In Streamlabs als Browser-Quelle mit der oben empfohlenen Größe anlegen — sie richtet sich nach den gewählten Kacheln und dem DPS-Graph. Das Widget zeigt ohne laufende Session nur den Kontostand. Die DPS-Kurven in der Vorschau sind Demo-Daten; die OBS-Quelle zeigt echte.',
-                'Add as a browser source at the recommended size shown above — it follows the selected tiles and the DPS graph. Without an active session the widget only shows the wallet balance. The DPS curves in the preview are demo data; the OBS source shows real ones.'],
+  overlayNote: ['In Streamlabs als Browser-Quelle mit der oben empfohlenen Größe anlegen — sie richtet sich nach den gewählten Kacheln und dem DPS-Graph. Die Quelle folgt automatisch dem Charakter, den du unten links auswählst. Ohne laufende Session zeigt das Widget nur den Kontostand. Die DPS-Kurven in der Vorschau sind Demo-Daten; die OBS-Quelle zeigt echte.',
+                'Add as a browser source at the recommended size shown above — it follows the selected tiles and the DPS graph. The source automatically follows the character you pick in the bottom left. Without an active session the widget only shows the wallet balance. The DPS curves in the preview are demo data; the OBS source shows real ones.'],
   minOneMetric: ['Mindestens ein Wert muss angezeigt bleiben.', 'At least one value must stay visible.'],
   dpsSrcLabel: ['DPS-Graph als eigene Quelle', 'DPS graph as separate source'],
   dpsSrcNote: ['Eigene Browser-Quelle, frei in der Szene platzierbar — dieselben Live-Kurven wie im Game-Overlay.',
@@ -485,9 +485,10 @@ async function loadStatus() {
     $('clientIdNote').classList.remove('hidden');
   }
 
+  // Gewählter Charakter kommt vom Server — daran hängen auch alle Overlays
   const chars = st.characters || [];
   if (chars.length && (!S.charId || !chars.some(c => c.characterId === S.charId)))
-    S.charId = chars[0].characterId;
+    S.charId = chars.some(c => c.characterId === st.activeCharId) ? st.activeCharId : chars[0].characterId;
 
   const cur = chars.find(c => c.characterId === S.charId);
   $('charAvatar').innerHTML = cur ? esc(initials(cur.name)) + portraitImg(cur.characterId) : '–';
@@ -537,9 +538,9 @@ async function loadStatus() {
       <button class="btn btn-danger" style="font-size:12px" data-forget="${c.characterId}">Revoke</button>
     </div>`).join('') || `<div class="empty">${t('noCharYet')}</div>`;
 
-  const url = `${location.origin}/overlay?charId=${S.charId ?? '<ID>'}`;
-  $('srcUrl').value = url;
-  $('dpsSrcUrl').value = `${location.origin}/dpswidget?charId=${S.charId ?? '<ID>'}`;
+  // URLs ohne charId: die Quellen folgen dem hier gewählten Charakter automatisch
+  $('srcUrl').value = `${location.origin}/overlay`;
+  $('dpsSrcUrl').value = `${location.origin}/dpswidget`;
   $('btnCsv').href = S.charId ? `/api/wallet/export.csv?charId=${S.charId}` : '#';
 }
 
@@ -906,7 +907,7 @@ async function loadOverlayScreen() {
   // demo=1 füttert nur den DPS-Graph mit simulierten Kurven — die OBS-Quelle
   // (ohne demo-Parameter) zeigt immer echte Daten.
   const frame = $('pvFrame');
-  const src = `/overlay?charId=${S.charId}&demo=1`;
+  const src = '/overlay?demo=1';
   if (!frame.dataset.src || frame.dataset.src !== src) {
     frame.dataset.src = src;
     frame.src = src;
@@ -1280,6 +1281,8 @@ $('charPop').addEventListener('click', async e => {
   if (!opt) return;
   S.charId = Number(opt.dataset.pick);
   $('charPop').classList.add('hidden');
+  // Wahl serverseitig merken: Stream-Widget, DPS-Quelle und Game-Overlay ziehen mit
+  try { await api(`/api/active-char?charId=${S.charId}`, { method: 'POST' }); } catch (err) { }
   await loadStatus();
   await loaders[S.screen]();
 });

@@ -74,9 +74,14 @@
 </div>
 
 <script>
-const charId = new URLSearchParams(location.search).get('charId');
+const params = new URLSearchParams(location.search);
+// Standard: die Quelle folgt dem in der App gewählten Charakter — ein Wechsel unten
+// links wirkt damit sofort, ohne die Browser-Quelle in OBS anzufassen.
+// Nur mit pin=1 bleibt sie fest an der charId aus der URL hängen (Multiboxing).
+const PIN = params.get('pin') === '1' ? params.get('charId') : null;
+const qChar = PIN ? 'charId=' + encodeURIComponent(PIN) + '&' : '';
 // demo=1: die App-Vorschau zeigt simulierte DPS-Kurven statt echter Log-Daten
-const DEMO = new URLSearchParams(location.search).get('demo') === '1';
+const DEMO = params.get('demo') === '1';
 
 function fmt(v){
   const a = Math.abs(v);
@@ -130,11 +135,12 @@ function chunkRows(list){
 
 async function tick(){
   const w = document.getElementById('w');
-  if (!charId){ w.classList.remove('on'); return; }
   try{
-    const r = await fetch('/api/overlay-data?charId=' + encodeURIComponent(charId));
+    const r = await fetch('/api/overlay-data' + (PIN ? '?charId=' + encodeURIComponent(PIN) : ''));
     if (!r.ok) throw 0;
     const d = await r.json();
+    // kein Charakter angemeldet: nichts anzeigen statt leerer Kacheln
+    if (!d.charId){ w.classList.remove('on'); return; }
 
     // "dps" ist keine Kachel, sondern der Graph unter den Reihen
     const keys = (d.metrics || []).filter(k => METRICS[k] || k === 'dps');
@@ -201,10 +207,10 @@ const DPS_EDGE = 3, DPS_SMOOTHW = 7;
 let dpsSeries = null;   // letzter Datenstand + Zeitstempel fürs flüssige Scrollen
 
 async function dpsTick(){
-  if (!dpsOn || !charId) return;
+  if (!dpsOn) return;
   let d;
   try {
-    const r = await fetch(`/api/dps?charId=${encodeURIComponent(charId)}&window=${DPS_WINDOW + DPS_SMOOTH + DPS_SMOOTHW + DPS_EDGE + 1}${DEMO ? '&demo=1' : ''}`);
+    const r = await fetch(`/api/dps?${qChar}window=${DPS_WINDOW + DPS_SMOOTH + DPS_SMOOTHW + DPS_EDGE + 1}${DEMO ? '&demo=1' : ''}`);
     if (!r.ok) return;
     d = await r.json();
   } catch(e){ return; }

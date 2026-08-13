@@ -2,6 +2,7 @@ using System.Reflection;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -103,6 +104,7 @@ WHERE last_error IS NOT NULL
                 hasDefaultApp = !string.IsNullOrWhiteSpace(Config.DefaultClientId),
                 usingDefaultApp = !string.IsNullOrWhiteSpace(Config.DefaultClientId) && string.IsNullOrWhiteSpace(Config.ClientIdRaw),
                 contact = Config.Contact,
+                activeCharId = Config.ActiveCharacterId,
                 overlayTextPath = Config.OverlayTextPath,
                 overlayMetrics = Config.OverlayMetrics,
                 rateHold = Config.RateHoldSeconds,
@@ -318,8 +320,11 @@ ORDER BY started_utc DESC LIMIT 50", ("$c", charId));
 
         // Schlanker Endpunkt für die Browser-Quelle in Streamlabs.
         // Kontostand ist immer dabei, damit das Widget auch ohne Session etwas zeigt.
-        app.MapGet("/api/overlay-data", (long charId) =>
+        // charId ist optional: ohne Angabe gilt der in der App gewählte Charakter,
+        // damit Browser-Quellen einem Wechsel automatisch folgen
+        app.MapGet("/api/overlay-data", ([FromQuery(Name = "charId")] long? charIdOpt) =>
         {
+            var charId = ResolveChar(charIdOpt);
             var st = Sessions.Current(charId);
             var balance = Sessions.CurrentBalance(charId);
             var name = Db.Scalar("SELECT name FROM characters WHERE character_id=$c", ("$c", charId));
@@ -729,6 +734,13 @@ WHERE l.character_id=$c AND l.lp > 0 ORDER BY l.lp DESC", ("$c", charId)))
             return Results.Ok(new { typeId, name, hubs, industry });
         });
 
+        // Charakterwechsel in der App: alle Overlays hängen daran und ziehen mit
+        app.MapPost("/api/active-char", (long charId) =>
+        {
+            Config.ActiveCharacterId = charId;
+            return Results.Ok(new { ok = true, activeCharId = Config.ActiveCharacterId });
+        });
+
         app.MapPost("/api/show-window", () => { ShowWindow?.Invoke(); return Results.Ok(); });
 
         // ---- Game-Overlay (In-Game-HUD mit DPS-Graph) ----
@@ -737,8 +749,9 @@ WHERE l.character_id=$c AND l.lp > 0 ORDER BY l.lp DESC", ("$c", charId)))
         // Log-Mitleser; ohne Abfragen legt er sich nach 5 Minuten wieder schlafen.
         // demo=1 liefert simulierte Kurven — für die Widget-Vorschau in der App,
         // damit man den Graphen auch ohne laufenden Kampf beurteilen kann.
-        app.MapGet("/api/dps", (long charId, int? window, int? demo) =>
+        app.MapGet("/api/dps", ([FromQuery(Name = "charId")] long? charIdOpt, int? window, int? demo) =>
         {
+            var charId = ResolveChar(charIdOpt);
             if (demo == 1)
             {
                 var win = Math.Clamp(window ?? 180, 30, 900);
@@ -838,6 +851,10 @@ WHERE l.character_id=$c AND l.lp > 0 ORDER BY l.lp DESC", ("$c", charId)))
         app.MapGet("/dpswidget", () => ServeEmbedded("dpswidget.html"));
         app.MapGet("/{file}", (string file) => ServeEmbedded(file));
     }
+
+    /// <summary>Übergebene Charakter-ID, sonst der in der App gewählte (Overlays folgen so mit).</summary>
+    private static long ResolveChar(long? id) =>
+        id.HasValue && id.Value > 0 ? id.Value : Config.ActiveCharacterId;
 
     private static (DateTime From, DateTime To) ParseRange(string range)
     {

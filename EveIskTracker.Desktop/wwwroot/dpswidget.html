@@ -61,9 +61,12 @@
 const $ = id => document.getElementById(id);
 const WINDOW = 120, SMOOTH = 10, SMOOTHW = 7, EDGE = 3;
 let series = null;   // letzter Datenstand + Zeitstempel fürs flüssige Scrollen
-let charId = new URLSearchParams(location.search).get('charId');
+const params = new URLSearchParams(location.search);
+// Standard: folgt dem in der App gewählten Charakter; pin=1 bindet fest an die charId
+const PIN = params.get('pin') === '1' ? params.get('charId') : null;
+const qChar = PIN ? 'charId=' + encodeURIComponent(PIN) + '&' : '';
 // demo=1: simulierte Kurven (Vorschau/Test ohne laufenden Kampf)
-const DEMO = new URLSearchParams(location.search).get('demo') === '1';
+const DEMO = params.get('demo') === '1';
 
 function fmt(v){
   const a = Math.abs(v);
@@ -72,22 +75,11 @@ function fmt(v){
   return Math.round(a).toString();
 }
 
-// Ohne charId in der URL: erster aktiver Charakter der App
-async function resolveChar(){
-  if (charId) return;
-  try {
-    const st = await (await fetch('/api/status')).json();
-    const c = (st.characters || []).find(x => x.enabled) || (st.characters || [])[0];
-    if (c) charId = c.characterId;
-  } catch(e){}
-}
-
 async function tick(){
   const w = $('w');
-  if (!charId){ await resolveChar(); if (!charId){ w.classList.remove('on'); return; } }
   let d;
   try {
-    const r = await fetch(`/api/dps?charId=${encodeURIComponent(charId)}&window=${WINDOW + SMOOTH + SMOOTHW + EDGE + 1}${DEMO ? '&demo=1' : ''}`);
+    const r = await fetch(`/api/dps?${qChar}window=${WINDOW + SMOOTH + SMOOTHW + EDGE + 1}${DEMO ? '&demo=1' : ''}`);
     if (!r.ok) throw 0;
     d = await r.json();
   } catch(e){
