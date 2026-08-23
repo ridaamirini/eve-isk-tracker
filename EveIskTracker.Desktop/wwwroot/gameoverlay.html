@@ -13,6 +13,7 @@
     --accent-200:#b6d8ff; --accent-800:#1c3d61;
     --n400:#99a4b5; --n700:#464f5e; --red:#f2647a;
   }
+  *{box-sizing:border-box}
   html,body{margin:0;padding:0;background:var(--bg);overflow:hidden;user-select:none;cursor:default}
   body{font-family:'IBM Plex Sans',sans-serif;color:var(--text)}
   #card{border:1px solid var(--accent-800);border-radius:12px;overflow:hidden;
@@ -37,7 +38,9 @@
   canvas{display:block;width:100%;height:120px}
   .dpsfoot{display:flex;justify-content:space-between;margin-top:4px;
            font-size:9px;letter-spacing:.08em;color:var(--n400)}
-  .dpsfoot b{color:var(--text);font-weight:500}
+  .dpsfoot b{font-weight:600}
+  .dpsfoot .sout b{color:var(--accent-200)}
+  .dpsfoot .sin b{color:var(--red)}
   .waiting{font-size:10px;color:var(--n400);text-align:center;padding:2px 0 4px}
 
   /* Session-Modul (kompakte Zeile wie im Stream-Widget) */
@@ -85,7 +88,7 @@
     <canvas id="graph"></canvas>
     <div class="waiting hidden" id="waiting"></div>
     <div class="dpsfoot">
-      <span id="sumOut">Σ –</span><span id="winNote"></span><span id="sumIn">Σ –</span>
+      <span class="sout" id="sumOut">Σ –</span><span id="winNote"></span><span class="sin" id="sumIn">Σ –</span>
     </div>
   </div>
   <div id="sess" class="hidden"></div>
@@ -136,6 +139,11 @@ function sendHeight(){
 
 // Das Game-Overlay folgt immer dem in der App gewählten Charakter — die Endpunkte
 // lösen ihn ohne charId-Parameter selbst auf.
+// Nur fuer Doku-Screenshots und Tests: demo=1 simuliert Kampfkurven, charId=<id>
+// zeigt abweichend vom gewaehlten Charakter einen bestimmten an.
+const goParams = new URLSearchParams(location.search);
+const DEMO = goParams.get('demo') === '1';
+const FORCE_CHAR = goParams.get('charId');
 
 // ---- DPS ----
 let modules = ['dps', 'session'];
@@ -148,7 +156,7 @@ let series = null;   // letzter Datenstand + Zeitstempel fürs flüssige Scrolle
 async function tickDps(){
   let d;
   try {
-    d = await (await fetch(`/api/dps?window=${WINDOW + SMOOTH + SMOOTHW + EDGE + 1}`)).json();
+    d = await (await fetch(`/api/dps?window=${WINDOW + SMOOTH + SMOOTHW + EDGE + 1}${DEMO ? "&demo=1" : ""}`)).json();
   } catch(e){ return; }
 
   if ((d.lang || 'de') !== LANG){ LANG = d.lang; applyLang(); }
@@ -162,8 +170,8 @@ async function tickDps(){
   $('dpsOut').textContent = fmt(avg(dealt));
   $('dpsIn').textContent = fmt(avg(taken));
   // Fußzeile: Gesamtschaden seit Client-Start (Σ), Mitte = sichtbares Zeitfenster
-  $('sumOut').innerHTML = 'Σ ' + tr('dealt') + ' <b>' + fmt(d.totalDealt) + '</b>';
-  $('sumIn').innerHTML = 'Σ ' + tr('taken') + ' <b>' + fmt(d.totalTaken) + '</b>';
+  $('sumOut').innerHTML = 'Σ <b>' + fmt(d.totalDealt) + '</b>';
+  $('sumIn').innerHTML = 'Σ <b>' + fmt(d.totalTaken) + '</b>';
   $('winNote').textContent = WINDOW + 's';
   // wessen Log läuft: Charaktername aus dem Log-Kopf, sonst Dateiname
   $('fileNote').textContent = d.listener || d.file || '';
@@ -246,7 +254,7 @@ let sessionStartMs = null;
 async function tickSession(){
   if (!modules.includes('session')) return;
   let d;
-  try { d = await (await fetch('/api/overlay-data')).json(); }
+  try { d = await (await fetch('/api/overlay-data' + (FORCE_CHAR ? '?charId=' + encodeURIComponent(FORCE_CHAR) : ''))).json(); }
   catch(e){
     // Tracker nicht erreichbar: sagen statt stumm leere Zellen zeigen
     sessionStartMs = null;

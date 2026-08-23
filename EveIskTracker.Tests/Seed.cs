@@ -195,6 +195,49 @@ public static class Seed
                 ("$sb", 30_000_000_000.0), ("$eb", 30_000_000_000.0 + i * 340_000_000));
         }
 
+        // --- Loyalitaetspunkte + LP-Store-Angebote ---
+        // Erfundene Corps/Items im 9000034x-Bereich; updated_utc steht auf "jetzt",
+        // damit der Hintergrund-Refresh die Demo-Daten in Ruhe laesst (24h-Cache)
+        var lpCorps = new[]
+        {
+            (Id: 90000301L, Name: "Demo Navy Command", Lp: 184_500L),
+            (Id: 90000302L, Name: "Demo Mining Syndicate", Lp: 42_800L),
+            (Id: 90000303L, Name: "Demo Relief Society", Lp: 9_150L),
+        };
+        foreach (var c in lpCorps)
+        {
+            Db.Run("INSERT INTO names(id,name,category) VALUES($i,$n,'corporation') ON CONFLICT(id) DO UPDATE SET name=$n",
+                ("$i", c.Id), ("$n", c.Name));
+            Db.Run(@"INSERT INTO loyalty(character_id,corp_id,lp,updated_utc) VALUES($c,$o,$l,$u)
+                     ON CONFLICT(character_id,corp_id) DO UPDATE SET lp=$l, updated_utc=$u",
+                ("$c", DemoId), ("$o", c.Id), ("$l", c.Lp), ("$u", Util.NowIso()));
+        }
+
+        // Angebot: Item, Menge, LP-Kosten, ISK-Kosten, Jita-Sell/Buy je Stueck
+        var offers = new (long Corp, long Type, string Name, long Qty, long Lp, double Isk, double Sell, double Buy)[]
+        {
+            (90000301, 90000341, "Demo Navy Heavy Blaster",  1, 24_000,  9_600_000, 195_000_000, 178_000_000),
+            (90000301, 90000342, "Demo Navy Uranium Charge L", 5_000, 2_400, 2_400_000, 3_100, 2_750),
+            (90000302, 90000343, "Demo Beancounter Implant", 1, 10_875,  4_350_000, 100_000_000,  91_000_000),
+            (90000302, 90000344, "Demo Mining Crystal Set",  10,  1_200,    600_000,   1_450_000,  1_180_000),
+            (90000303, 90000345, "Demo Nexus Chip",           1,    500,          0,   2_895_000,  2_400_000),
+            (90000303, 90000346, "Demo Combat Booster",       3,  3_600,  1_800_000,   4_900_000,  4_100_000),
+        };
+        long offerId = 1;
+        foreach (var o in offers)
+        {
+            Db.Run("INSERT INTO names(id,name,category) VALUES($i,$n,'inventory_type') ON CONFLICT(id) DO UPDATE SET name=$n",
+                ("$i", o.Type), ("$n", o.Name));
+            Db.Run(@"INSERT INTO market_prices(type_id,jita_sell,jita_buy,updated_utc) VALUES($t,$s,$b,$u)
+                     ON CONFLICT(type_id) DO UPDATE SET jita_sell=$s, jita_buy=$b, updated_utc=$u",
+                ("$t", o.Type), ("$s", o.Sell), ("$b", o.Buy), ("$u", Util.NowIso()));
+            Db.Run(@"INSERT INTO lp_offers(corp_id,offer_id,type_id,quantity,lp_cost,isk_cost,required_json,updated_utc)
+                     VALUES($c,$o,$t,$q,$l,$i,'[]',$u)
+                     ON CONFLICT(corp_id,offer_id) DO UPDATE SET type_id=$t, quantity=$q, lp_cost=$l, isk_cost=$i, updated_utc=$u",
+                ("$c", o.Corp), ("$o", offerId++), ("$t", o.Type), ("$q", o.Qty),
+                ("$l", o.Lp), ("$i", o.Isk), ("$u", Util.NowIso()));
+        }
+
         Console.WriteLine("Demo-Charakter 'DEMO Pilot' angelegt (ID " + DemoId + ").");
     }
 
@@ -203,6 +246,10 @@ public static class Seed
         foreach (var t in new[] { "transactions", "journal", "mining", "mining_delta", "industry_jobs", "market_orders", "characters", "tokens", "sync_state", "kills" })
             Db.Run($"DELETE FROM {t} WHERE character_id=$c", ("$c", DemoId));
         Db.Run("DELETE FROM names WHERE id IN (90000202, 90000203)");
+        Db.Run("DELETE FROM loyalty WHERE character_id=$c", ("$c", DemoId));
+        Db.Run("DELETE FROM lp_offers WHERE corp_id BETWEEN 90000301 AND 90000303");
+        Db.Run("DELETE FROM market_prices WHERE type_id BETWEEN 90000341 AND 90000346");
+        Db.Run("DELETE FROM names WHERE id BETWEEN 90000301 AND 90000346");
         Db.Run("DELETE FROM session_samples WHERE session_id IN (SELECT id FROM sessions WHERE character_id=$c)", ("$c", DemoId));
         Db.Run("DELETE FROM sessions WHERE character_id=$c", ("$c", DemoId));
     }

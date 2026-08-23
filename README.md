@@ -30,10 +30,13 @@ itself still shows you.
 - **Ore chart** — every mineable ore (belt, moon, ice, Triglavian, incl. all variants and
   compressed forms, pulled dynamically from ESI) ranked by **ISK per m³** with live Jita
   buy/sell prices, filterable by security band — inspired by ore.cerlestes.de
-- **Stream widget** — 420 × 240 px browser source styled like classic session HUDs:
-  timer · session ISK · ISK/h · bounties · missions · kills · destroyed · mining · wallet,
-  each tile toggleable, optional character portrait & name in the header, fully
-  transparent background, live preview inside the app
+- **Stream widget** — browser source styled like classic session HUDs: timer · session
+  ISK · ISK/h · bounties · missions · kills · destroyed · mining · wallet · **live DPS
+  graph**, each tile toggleable, optional character portrait & name in the header, fully
+  transparent background, live preview inside the app that shows the recommended source
+  size for your tile selection
+- **Standalone DPS source** — the combat graph as its own 420 × 150 browser source,
+  placeable anywhere in your scene
 - **LP store comparison** — see what your loyalty points are worth: all offers from the
   corps you hold LP with, valued at Jita prices (including required items), ranked by
   **ISK per LP** — plus what your current LP balance would pay out at each offer
@@ -50,9 +53,14 @@ itself still shows you.
 |---|---|
 | ![Wallet](docs/wallet.png) | ![Widget](docs/widget.png) |
 
+The in-game overlay (DPS graph + session stats), floating over the EVE client:
+
+![Game overlay](docs/gameoverlay.png)
+
 ![Reports](docs/reports.png)
 ![Kills](docs/kills.png)
 ![Ore chart](docs/ores.png)
+![LP store](docs/lp.png)
 ![Research](docs/research.png)
 ![Stream Overlay](docs/overlay.png)
 
@@ -83,11 +91,20 @@ fullscreen.
 
 ### Widget in OBS/Streamlabs
 
-**Stream Overlay** → **Copy source URL** → add as a browser source at **420 × 240** in
-OBS/Streamlabs. Pick which tiles to show (and whether to show your character's portrait
-and name) inside the app; changes apply to the running widget within seconds. Without an
-active session the widget only shows the wallet balance. The app must be running — the
-window may be closed, it keeps living in the tray.
+**Stream Overlay** → **Copy source URL** → add it as a browser source in OBS/Streamlabs
+at the size the app recommends (it is shown next to the URL and follows your tile
+selection). Pick which tiles to show — including the **live DPS graph** — and whether to
+show your character portrait and name; changes apply to the running widget within seconds.
+The combat graph is also available as its own source (**DPS graph as separate source**,
+420 × 150) if you would rather place it elsewhere in your scene:
+
+![DPS source](docs/dpswidget.png)
+
+All browser sources follow the character you select at the bottom left of the app, so
+switching characters mid-stream needs no changes in OBS. Append `&pin=1` to a URL to lock
+that source to one specific character instead. Without an active session the widget shows
+the wallet balance. The app must be running — the window may be closed, it keeps living in
+the tray.
 
 ## Security & privacy
 
@@ -97,8 +114,12 @@ window may be closed, it keeps living in the tray.
   designed for exactly this)
 - The refresh token is stored **DPAPI-encrypted** — only your Windows account can read it
 - The app talks to `esi.evetech.net`, `login.eveonline.com`, `images.evetech.net`
-  (character portraits) and — only for kill valuations — `zkillboard.com`;
+  (character portraits and item icons), `zkillboard.com` (kill valuations) and
+  `ref-data.everef.net` (blueprint data for the build-cost breakdown);
   fonts/icons come from Google Fonts / unpkg (CDN)
+- The DPS graph reads the EVE client's own combat logs in `Documents\EVE\logs\Gamelogs`
+  **read-only** — nothing is written to the game, and no log content ever leaves your
+  machine
 - All data lives in `%LOCALAPPDATA%\EveIskTracker\eveisk.db` (SQLite), with an automatic
   daily snapshot backup next to it
 
@@ -115,7 +136,7 @@ Source builds contain **no default client ID** — either enter your own CCP app
 client ID in Settings (see [SETUP.md](SETUP.md)), or pass one at build time with
 `-p:DefaultClientId=...`.
 
-Tests (45 calculation checks, incl. FIFO edge cases):
+Tests (72 checks: FIFO edge cases, combat-log parsing, DPS buckets, LP valuation):
 
 ```bash
 dotnet run --project EveIskTracker.Tests
@@ -140,6 +161,10 @@ EveIskTracker.Desktop/   WinForms window (WebView2) + internal Kestrel server (p
   SyncService.cs         background sync paced by CCP's cache timers
   Analytics.cs           FIFO engine, ratting/mining/industry analytics
   Sessions.cs            session tracking
+  CombatLog.cs           combat-log tailing, DPS buckets (in-game overlay + widgets)
+  GameOverlayForm.cs     click-through in-game HUD window (GPU-free, isolated process)
+  LpStore.cs             LP store offers + Jita valuation (ISK per LP)
+  Research.cs            hub price comparison and build-cost breakdown
   wwwroot/               UI (embedded into the EXE), i18n en/de
 EveIskTracker.Tests/     calculation tests + demo data seeder
 ```
@@ -175,5 +200,6 @@ The Settings screen also links these community resources:
 - [EVE Online / CCP Games](https://www.eveonline.com/) — ESI API, SSO and image server.
   EVE Online and all related trademarks are the property of CCP hf.
 - [zKillboard](https://zkillboard.com/) — kill valuations
+- [EVE Ref](https://everef.net/) — blueprint reference data for the build-cost breakdown
 - Design: "PULSAR" theme based on the Nocturne design system
 - [Phosphor Icons](https://phosphoricons.com/), fonts: Chakra Petch & IBM Plex Sans
