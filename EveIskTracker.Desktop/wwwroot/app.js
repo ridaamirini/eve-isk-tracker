@@ -130,6 +130,13 @@ const L = {
   thLpProfit: ['Gewinn', 'Profit'],
   thLpTotal: ['Deine LP wert', 'Your LP worth'],
   lpEmpty: ['Noch keine LP-Daten.', 'No LP data yet.'],
+  lpNoMatch: ['Kein Treffer für die Suche.', 'Nothing matches your search.'],
+  lpOffers: ['Angebote', 'offers'],
+  lpSearchPh: ['Item oder Corp suchen …', 'Search item or corp …'],
+  lpHideCorp: ['Ausblenden — Angebote dieser Corp verstecken', 'Hide — exclude this corp\u2019s offers'],
+  lpShowCorp: ['Wieder einblenden', 'Show again'],
+  lpCorpNote: ['Corp anklicken, um sie aus- oder wieder einzublenden (wird gemerkt)',
+               'Click a corp to hide or show it again (remembered)'],
   lpNoLp: ['Keine Loyalitätspunkte gefunden — LP gibt es für Missionen, Incursions und Faction Warfare.',
            'No loyalty points found — you earn LP from missions, incursions and faction warfare.'],
   lpScopeBanner: ['Für LP-Daten fehlt deinem Login noch die Berechtigung <code>esi-characters.read_loyalty.v1</code>. Auf developers.eveonline.com die Permission zur Anwendung hinzufügen, dann unter Settings den Charakter neu anmelden.',
@@ -994,9 +1001,17 @@ $('metricToggles').addEventListener('click', async e => {
 
 S.lpBasis = 'sell';
 
+// Zustand des LP-Screens: Rohdaten vom Server, Suche und Sortierung liegen im
+// Client — die Liste ist klein genug, und Tippen soll ohne Serverrunde reagieren
+S.lpData = null;
+S.lpQuery = '';
+S.lpSort = 'iskPerLp';
+S.lpDesc = true;
+
 async function loadLpScreen() {
   if (!S.charId) return;
   const d = await api(`/api/lp?charId=${S.charId}&basis=${S.lpBasis}`);
+  S.lpData = d;
   const me = S.status && S.status.characters.find(c => c.characterId === S.charId);
 
   $('lpProgress').textContent = d.busy ? `${t('lpLoading')} … ${d.progress || ''}` : '';
@@ -1006,14 +1021,59 @@ async function loadLpScreen() {
     (d.error ? `<div class="banner err">${esc(d.error)}</div>` : '') +
     (me && me.hasLpScope && !d.balances.length ? `<div class="banner info">${t('lpNoLp')}</div>` : '');
 
+  // Corps sind Schalter: abgewählte Corps fliegen aus der Rangliste und werden
+  // beim Auffrischen übersprungen; die Auswahl merkt sich der Tracker
   $('lpBalances').innerHTML = d.balances.map(b =>
-    `<span class="tag tag-accent">${esc(b.corp)} · ${nloc(b.lp)} LP</span>`).join('') +
-    (d.balances.length ? `<span class="head-note" style="align-self:center;margin-left:8px">${t('lpBasisNote')}</span>` : '');
+    `<span class="tag ${b.hidden ? 'tag-off' : 'tag-accent'} click" data-lpcorp="${b.corpId}"
+       title="${b.hidden ? t('lpShowCorp') : t('lpHideCorp')}">${esc(b.corp)} · ${nloc(b.lp)} LP</span>`).join('') +
+    (d.balances.length ? `<span class="head-note" style="align-self:center;margin-left:8px">${t('lpCorpNote')}</span>` : '');
 
-  const max = d.rows.length && d.rows[0].iskPerLp != null ? d.rows[0].iskPerLp : 1;
-  $('lpRows').innerHTML = d.rows.length ? d.rows.map((r, i) => `
+  renderLpRows();
+
+  // Solange Preise laden, automatisch nachfassen
+  if (d.busy && S.screen === 'lp') setTimeout(() => { if (S.screen === 'lp') loadLpScreen().catch(() => {}); }, 3000);
+}
+
+/** Zeilen filtern, sortieren und zeichnen — ohne den Server erneut zu fragen. */
+function renderLpRows() {
+  const d = S.lpData;
+  if (!d) return;
+
+  const q = S.lpQuery.trim().toLowerCase();
+  let rows = d.rows.filter(r =>
+    !q || r.item.toLowerCase().includes(q) || r.corp.toLowerCase().includes(q));
+
+  // Nicht bewertbare Zeilen (kein Marktpreis) immer ans Ende, egal wie sortiert wird
+  const key = S.lpSort;
+  const val = r => {
+    const v = r[key];
+    if (typeof v === 'string') return v.toLowerCase();
+    return v == null ? null : v;
+  };
+  rows = rows.slice().sort((a, b) => {
+    const va = val(a), vb = val(b);
+    if (va == null && vb == null) return 0;
+    if (va == null) return 1;
+    if (vb == null) return -1;
+    const c = typeof va === 'string' ? va.localeCompare(vb) : va - vb;
+    return S.lpDesc ? -c : c;
+  });
+
+  // Balkenlänge misst am besten sichtbaren ISK/LP-Wert
+  const best = Math.max(...rows.map(r => r.iskPerLp || 0), 1);
+
+  $('lpCount').textContent = d.rows.length
+    ? `${nloc(rows.length)} / ${nloc(d.rows.length)} ${t('lpOffers')}` : '';
+
+  document.querySelectorAll('#screen-lp th.sortable').forEach(th => {
+    const on = th.dataset.sort === S.lpSort;
+    th.classList.toggle('sorted', on);
+    th.dataset.dir = on ? (S.lpDesc ? 'desc' : 'asc') : '';
+  });
+
+  $('lpRows').innerHTML = rows.length ? rows.map((r, i) => `
     <tr>
-      <td class="head-note">${r.iskPerLp != null ? i + 1 : '–'}</td>
+      <td class="head-note">${i + 1}</td>
       <td>${typeIcon(r.typeId)}${esc(r.item)}${r.qty > 1 ? ` <span class="head-note">×${nloc(r.qty)}</span>` : ''}
         ${r.reqCost > 0 ? `<div class="head-note" style="font-size:11px">+ ${t('lpReq')} ${fmtIsk(r.reqCost)}</div>` : ''}</td>
       <td class="head-note" style="font-size:12px">${esc(r.corp)}</td>
@@ -1022,14 +1082,46 @@ async function loadLpScreen() {
       <td class="num mono ${r.profit > 0 ? 'acc' : ''}">${r.profit != null ? signed(r.profit) : `<span class="head-note">${t('lpNoPrice')}</span>`}</td>
       <td class="num">
         <div class="mono" style="font-weight:600">${r.iskPerLp != null ? nloc(Math.round(r.iskPerLp)) : '—'}</div>
-        <div class="bar" style="margin-top:4px"><div class="bar-fill" style="width:${r.iskPerLp != null ? Math.max(1, Math.round(r.iskPerLp / max * 100)) : 0}%"></div></div>
+        <div class="bar" style="margin-top:4px"><div class="bar-fill" style="width:${r.iskPerLp != null ? Math.max(1, Math.round(r.iskPerLp / best * 100)) : 0}%"></div></div>
       </td>
       <td class="num mono ${r.myTotal > 0 ? 'pos' : ''}">${r.myTotal != null && r.myTotal > 0 ? fmtIsk(r.myTotal) : '—'}</td>
-    </tr>`).join('') : `<tr><td colspan="8" class="empty">${t('lpEmpty')}</td></tr>`;
-
-  // Solange Preise laden, automatisch nachfassen
-  if (d.busy && S.screen === 'lp') setTimeout(() => { if (S.screen === 'lp') loadLpScreen().catch(() => {}); }, 3000);
+    </tr>`).join('')
+    : `<tr><td colspan="8" class="empty">${q ? t('lpNoMatch') : t('lpEmpty')}</td></tr>`;
 }
+
+// Corp an-/abwählen: sofort speichern, dann neu laden (der Server filtert mit)
+$('lpBalances').addEventListener('click', async e => {
+  const tag = e.target.closest('[data-lpcorp]');
+  if (!tag || !S.lpData) return;
+  const id = tag.dataset.lpcorp;
+  const hidden = (S.status.lpHiddenCorps || '').split(',').filter(Boolean);
+  const next = hidden.includes(id) ? hidden.filter(x => x !== id) : [...hidden, id];
+  try {
+    await api('/api/config', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lpHiddenCorps: next.join(',') }),
+    });
+    S.status.lpHiddenCorps = next.join(',');
+    // wieder eingeblendet? Dann fehlen evtl. Angebote/Preise — Auffrischen anstoßen
+    if (hidden.includes(id)) await api(`/api/lp/refresh?charId=${S.charId}`, { method: 'POST' });
+    await loadLpScreen();
+  } catch (err) { alert(t('saveFail') + err.message); }
+});
+
+$('lpSearch').addEventListener('input', e => {
+  S.lpQuery = e.target.value;
+  renderLpRows();
+});
+
+// Spaltenkopf: erst nach dieser Spalte sortieren, erneuter Klick dreht die Richtung
+document.querySelector('#screen-lp thead').addEventListener('click', e => {
+  const th = e.target.closest('th.sortable');
+  if (!th) return;
+  const key = th.dataset.sort;
+  if (S.lpSort === key) S.lpDesc = !S.lpDesc;
+  else { S.lpSort = key; S.lpDesc = key !== 'item' && key !== 'corp'; }
+  renderLpRows();
+});
 
 $('lpBasis').addEventListener('click', e => {
   const b = e.target.closest('.seg-opt'); if (!b) return;

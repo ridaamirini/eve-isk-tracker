@@ -158,6 +158,30 @@ public static class Config
         set => Db.SetKv("active_char", value.ToString());
     }
 
+    /// <summary>
+    /// NPC-Corps, deren LP-Store-Angebote im LP-Screen ausgeblendet sind (Komma-Liste
+    /// von Corp-IDs). Man sammelt bei vielen Corps nebenbei ein paar Punkte, die nie
+    /// jemand eintauscht, die sollen die Rangliste nicht zumuellen. Ausgeblendete
+    /// Corps werden auch beim Auffrischen uebersprungen und kosten so keine Abfragen.
+    /// </summary>
+    public static string LpHiddenCorps
+    {
+        get => Db.GetKv("lp_hidden_corps", "");
+        set
+        {
+            var clean = (value ?? "")
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Where(s => long.TryParse(s, out var v) && v > 0)
+                .Distinct();
+            Db.SetKv("lp_hidden_corps", string.Join(',', clean));
+        }
+    }
+
+    /// <summary>Ist diese Corp im LP-Screen ausgeblendet?</summary>
+    public static bool IsLpCorpHidden(long corpId) =>
+        LpHiddenCorps.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                     .Any(s => long.TryParse(s, out var v) && v == corpId);
+
     /// <summary>Oberflächensprache: "de" oder "en". Standard Englisch (internationales Publikum).</summary>
     public static string Lang
     {

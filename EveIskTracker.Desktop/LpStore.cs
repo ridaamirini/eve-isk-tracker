@@ -139,7 +139,8 @@ public static class LpStore
     private static async Task RefreshAsync(long charId)
     {
         var esi = new EsiClient(Config.Contact);
-        var corps = CorpsWithLp(charId);
+        // ausgeblendete Corps kosten weder Abfragen noch Preis-Lookups
+        var corps = CorpsWithLp(charId).Where(c => !Config.IsLpCorpHidden(c)).ToList();
         if (corps.Count == 0) return;
 
         // 1) Angebote je Corp (24h-Cache — LP-Stores ändern sich praktisch nie)

@@ -39,7 +39,9 @@ itself still shows you.
   placeable anywhere in your scene
 - **LP store comparison** — see what your loyalty points are worth: all offers from the
   corps you hold LP with, valued at Jita prices (including required items), ranked by
-  **ISK per LP** — plus what your current LP balance would pay out at each offer
+  **ISK per LP** — plus what your current LP balance would pay out at each offer. Hide
+  corps you never actually trade with (remembered, and skipped when refreshing), search
+  by item or corp, and sort by any column
 - **Product research** — search any item and compare best sell/buy prices across the five
   major trade hubs, plus its manufacturing bill of materials with Jita-priced build cost
   and margin vs. the best hub (blueprint data from EVE Ref)
@@ -82,9 +84,8 @@ source, where no default is embedded), see [SETUP.md](SETUP.md).
 **Game Overlay → Show overlay** (or **Ctrl+Shift+O** anywhere). The HUD floats above the
 EVE client — always on top, click-through, never steals focus. The DPS graph tails EVE's
 game logs in `Documents\EVE\logs\Gamelogs` (read-only, no game modification, works in any
-client language) and automatically follows the most recently active client — switch
-characters and the HUD follows. Use *Adjust position* to drag it where you want; pick the
-view (**detailed** with graph and totals, or a **compact** number strip), modules (DPS
+client language) and follows the character you pick in the app. Use *Adjust position*
+to drag it where you want; pick the view (**detailed** with graph and totals, or a **compact** number strip), modules (DPS
 graph, session stats) and opacity (10–100 % slider) in the app. EVE must run in
 **windowed** or **borderless fullscreen** mode — nothing can draw over exclusive
 fullscreen.

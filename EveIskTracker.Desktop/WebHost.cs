@@ -105,6 +105,7 @@ WHERE last_error IS NOT NULL
                 usingDefaultApp = !string.IsNullOrWhiteSpace(Config.DefaultClientId) && string.IsNullOrWhiteSpace(Config.ClientIdRaw),
                 contact = Config.Contact,
                 activeCharId = Config.ActiveCharacterId,
+                lpHiddenCorps = Config.LpHiddenCorps,
                 overlayTextPath = Config.OverlayTextPath,
                 overlayMetrics = Config.OverlayMetrics,
                 rateHold = Config.RateHoldSeconds,
@@ -140,6 +141,7 @@ WHERE last_error IS NOT NULL
             if (form.TryGetValue("sessionAutoStop", out var sa)) Config.SessionAutoStop = sa != "0";
             if (form.TryGetValue("gameOverlayModules", out var gm)) Config.GameOverlayModules = gm;
             if (form.TryGetValue("gameOverlayLayout", out var gl)) Config.GameOverlayLayout = gl;
+            if (form.TryGetValue("lpHiddenCorps", out var lh)) Config.LpHiddenCorps = lh;
             if (form.TryGetValue("gameOverlayOpacity", out var go) && int.TryParse(go, out var gov))
             {
                 Config.GameOverlayOpacity = gov;
@@ -655,10 +657,18 @@ WHERE l.character_id=$c AND l.lp > 0 ORDER BY l.lp DESC", ("$c", charId)))
                 while (r.Read())
                 {
                     lpByCorp[r.GetInt64(0)] = r.GetInt64(2);
-                    balances.Add(new { corpId = r.GetInt64(0), corp = r.GetString(1), lp = r.GetInt64(2) });
+                    balances.Add(new
+                    {
+                        corpId = r.GetInt64(0),
+                        corp = r.GetString(1),
+                        lp = r.GetInt64(2),
+                        hidden = Config.IsLpCorpHidden(r.GetInt64(0)),
+                    });
                 }
 
-            var offers = LpStore.LoadOffers(corps);
+            // Angebote ausgeblendeter Corps gar nicht erst bewerten
+            var visible = corps.Where(c => !Config.IsLpCorpHidden(c)).ToList();
+            var offers = LpStore.LoadOffers(visible);
             var prices = MarketPrices.Load();
             var names = Analytics.Names();
 
@@ -696,7 +706,7 @@ WHERE l.character_id=$c AND l.lp > 0 ORDER BY l.lp DESC", ("$c", charId)))
                 error = LpStore.LastError,
                 balances,
                 rows = computed.OrderByDescending(x => x.IskPerLp ?? double.MinValue)
-                               .Select(x => x.Row).Take(400),
+                               .Select(x => x.Row),
             });
         });
 

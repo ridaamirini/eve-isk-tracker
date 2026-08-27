@@ -235,19 +235,23 @@
       <div class="head-rule"></div>
 
       <div id="lpBanners"></div>
-      <div class="tagrow" id="lpBalances" style="margin-bottom:14px"></div>
+      <div class="tagrow" id="lpBalances" style="margin-bottom:10px"></div>
+      <div class="row" style="margin-bottom:14px;gap:10px">
+        <input class="input" id="lpSearch" data-i18n-ph="lpSearchPh" placeholder="Item oder Corp suchen ..." style="max-width:320px">
+        <span class="head-note" id="lpCount"></span>
+      </div>
 
       <div class="card" style="padding:4px 0">
         <div class="tablewrap"><table class="table">
           <thead><tr>
             <th style="width:36px">#</th>
-            <th>Item</th>
-            <th>Corp</th>
-            <th class="num">LP</th>
-            <th class="num" data-i18n="thLpIsk">ISK-Einsatz</th>
-            <th class="num" data-i18n="thLpProfit">Gewinn</th>
-            <th class="num" style="width:26%">ISK / LP</th>
-            <th class="num" data-i18n="thLpTotal">Deine LP wert</th>
+            <th class="sortable" data-sort="item">Item</th>
+            <th class="sortable" data-sort="corp">Corp</th>
+            <th class="num sortable" data-sort="lpCost">LP</th>
+            <th class="num sortable" data-sort="iskCost" data-i18n="thLpIsk">ISK-Einsatz</th>
+            <th class="num sortable" data-sort="profit" data-i18n="thLpProfit">Gewinn</th>
+            <th class="num sortable" data-sort="iskPerLp" style="width:26%">ISK / LP</th>
+            <th class="num sortable" data-sort="myTotal" data-i18n="thLpTotal">Deine LP wert</th>
           </tr></thead>
           <tbody id="lpRows"><tr><td colspan="8" class="empty" data-i18n="lpEmpty">Noch keine LP-Daten.</td></tr></tbody>
         </table></div>
