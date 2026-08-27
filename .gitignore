@@ -15,3 +15,4 @@ release/
 
 # Build-Geheimnisse (Standard-Client-ID fuer offizielle Releases)
 release.env
+RELEASE_NOTES_*.md
